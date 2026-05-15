@@ -5,18 +5,17 @@ import os
 
 class DataManager:
     def __init__(self, file_path='data/baza_wisielec.csv'):
-        # Inicjalizacja ścieżki
+        # Relatywny zapis ścieżek, dla unwersalnosci
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self._full_path = os.path.join(base_dir, file_path)
 
-        # Pusta lista na start
         self._all_words = []
 
-        # Wczytujemy dane
         self.load_words()
 
     def load_words(self):
 
+        #utf-8 i delimeter związane z polskimi znakami i excelem z którego jest CSV
         file = open(self._full_path, mode='r', encoding='utf-8')
         reader = csv.DictReader(file, delimiter=';')
         self._all_words = list(reader)
@@ -51,10 +50,10 @@ class DataManager:
             return None
 
         picked_word = random.choice(candidates)
-        """Zwraca hasło - długość"""
+        """Zwraca hasło wraz z długością"""
         return (picked_word['hasło'].upper(), int(picked_word['długość']))
 
-"""Sprawdzenie czy działa poprawnie"""
+#Sprawdzenie czy działa poprawnie
 
 if __name__ == "__main__":
     dm = DataManager()
