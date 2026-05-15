@@ -3,7 +3,7 @@ import random
 import os
 
 
-class DataMenager:
+class DataManager:
     def __init__(self, file_path='data/baza_wisielec.csv'):
         # Relatywny zapis ścieżek, dla unwersalnosci
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,12 +15,11 @@ class DataMenager:
 
     def load_words(self):
 
-        #utf-8 i delimeter związane z polskimi znakami i excelem z którego jest CSV
-        file = open(self._full_path, mode='r', encoding='utf-8')
-        reader = csv.DictReader(file, delimiter=';')
-        self._all_words = list(reader)
-        file.close()
-        print(f"Wczytano słowa. Liczba rekordów: {len(self._all_words)}")
+        # utf-8 i delimeter związane z polskimi znakami i excelem z którego jest CSV
+        with open(self._full_path, mode='r', encoding='utf-8') as file:
+            reader = csv.DictReader(file, delimiter=';')
+            self._all_words = list(reader)
+        return len(self._all_words)
 
     def get_available_levels(self):
         """Zwraca unikalne poziomy trudności."""
@@ -51,22 +50,4 @@ class DataMenager:
 
         picked_word = random.choice(candidates)
         """Zwraca hasło wraz z długością"""
-        return (picked_word['hasło'].upper(), int(picked_word['długość']))
-
-#Sprawdzenie czy działa poprawnie
-
-if __name__ == "__main__":
-    dm = DataMenager()
-
-    lvls = dm.get_available_levels()
-    print("Dostępne poziomy:", lvls)
-
-    if lvls:
-        test_lvl = lvls[0]
-        categories = dm.get_categories_for_level(test_lvl)
-        print(f"Kategorie dla {test_lvl}:", categories)
-
-        if categories:
-            chosen_category = categories[0]
-            word, length = dm.get_final_word(test_lvl, chosen_category)
-            print(f"Wylosowano: {word} (litery: {length})")
+        return picked_word['hasło'].upper(), int(picked_word['długość'])
