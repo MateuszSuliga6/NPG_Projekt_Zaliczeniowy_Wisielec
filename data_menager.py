@@ -3,7 +3,7 @@ import random
 import os
 
 
-class DataManager:
+class DataMenager:
     def __init__(self, file_path='data/baza_wisielec.csv'):
         # Relatywny zapis ścieżek, dla unwersalnosci
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -56,7 +56,7 @@ class DataManager:
 #Sprawdzenie czy działa poprawnie
 
 if __name__ == "__main__":
-    dm = DataManager()
+    dm = DataMenager()
 
     lvls = dm.get_available_levels()
     print("Dostępne poziomy:", lvls)
