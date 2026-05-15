@@ -54,7 +54,7 @@ class DataManager:
         """Zwraca hasło - długość"""
         return (picked_word['hasło'].upper(), int(picked_word['długość']))
 
-
+"""Sprawdzenie czy działa poprawnie"""
 
 if __name__ == "__main__":
     dm = DataManager()
