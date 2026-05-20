@@ -60,3 +60,11 @@ class StatsManager:
 
         #zapis zmodygikowanego słownika do pliku json
         self._write_json(stats)
+
+    #FIX ME
+    def get_leader_board(self) -> list:
+        pass
+
+    def get_player_stats(self, player_name: str) -> dict:
+        pass
+
