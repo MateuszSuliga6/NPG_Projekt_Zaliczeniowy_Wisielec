@@ -1,28 +1,26 @@
 import sys
 from PySide6 import QtCore, QtWidgets
-import csv
-import random
 
-filename = "data/baza_wisielec.csv"
+from data_manager import DataManager
 
-with open(filename,encoding='utf-8') as f:
-    lines = sum(1 for line in f)
-def choose_row():
-    with open(filename,encoding='utf-8') as f:
-        reader = csv.reader(f)
-        line_number = random.randrange(lines)
-        chosen_row = next(row for row_number, row in enumerate(reader)
-                          if row_number == line_number)
-        return chosen_row[0].split(";")
-
+dm = DataManager()
 
 class MyWidget(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, poziom, kategoria):
         super().__init__()
 
-        self.button = QtWidgets.QPushButton("Click me!")
-        self.text = QtWidgets.QLabel(" ".join(choose_row()),
-                                     alignment=QtCore.Qt.AlignCenter)
+        self.poziom = poziom
+        self.kategoria = kategoria
+
+        self.button = QtWidgets.QPushButton("Losuj kolejne hasło")
+
+        poczatkowe_slowo = self.pobierz_haslo()
+        self.text = QtWidgets.QLabel(poczatkowe_slowo, alignment=QtCore.Qt.AlignCenter)
+
+        czcionka = self.text.font()
+        czcionka.setPointSize(24)
+        czcionka.setBold(True)
+        self.text.setFont(czcionka)
 
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(self.text)
@@ -30,18 +28,34 @@ class MyWidget(QtWidgets.QWidget):
 
         self.button.clicked.connect(self.magic)
 
+    def pobierz_haslo(self):
+
+        wynik = dm.get_final_word(self.poziom, self.kategoria)
+
+        if wynik is None:
+            return f"[Brak haseł dla:\nPoziom: '{self.poziom}'\nKategoria: '{self.kategoria}']"
+        slowo = wynik[0]
+        return " ".join(slowo)
+
     @QtCore.Slot()
     def magic(self):
-        self.text.setText(" ".join(choose_row()))
-
-
+        self.text.setText(self.pobierz_haslo())
 
 
 if __name__ == "__main__":
-            app = QtWidgets.QApplication([])
-            widget = MyWidget()
-            widget.resize(800, 600)
-            widget.show()
-            widget_list = [widget]
-            sys.exit(app.exec())
+    app = QtWidgets.QApplication([])
 
+    wybrany_poziom = "łatwy"
+    wybrana_kategoria = "Zwierzęta"
+
+
+    print(f"Uruchamiam grę dla odczytanych z pliku danych:")
+    print(f" - Poziom: '{wybrany_poziom}'")
+    print(f" - Kategoria: '{wybrana_kategoria}'")
+
+    widget = MyWidget(poziom=wybrany_poziom, kategoria=wybrana_kategoria)
+    widget.resize(800, 600)
+    widget.setWindowTitle(f"Wisielec - {wybrany_poziom}: {wybrana_kategoria}")
+    widget.show()
+
+    sys.exit(app.exec())
