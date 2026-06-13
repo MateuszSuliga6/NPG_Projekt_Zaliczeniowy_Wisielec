@@ -22,13 +22,14 @@ class StatsManager:
         #sprawdzenie czy jest folder data i ewnetualne utworzenie go
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
+
         #sprawdzenie czy jest plik stats.json i ewenetualne utworzenie go
         if not os.path.exists(self._full_path):
             default_structure = {"players": {}}
             self._write_json(default_structure)
 
     def save_game_stats(self, player_name: str, score: int, level: str, category: str, result: bool):
-        """Zapis statystyk gry danego gracza"""
+        #Zapis statystyk gry danego gracza
         #wczytanie aktualnego stanu pliku
         stats = self._read_json()
 
