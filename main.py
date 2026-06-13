@@ -3,59 +3,56 @@ from PySide6 import QtCore, QtWidgets
 
 from data_manager import DataManager
 
-dm = DataManager()
-
-class MyWidget(QtWidgets.QWidget):
-    def __init__(self, poziom, kategoria):
+class GameWindow(QtWidgets.QWidget):
+    def __init__(self, level: str, category: str) -> None:
         super().__init__()
 
-        self.poziom = poziom
-        self.kategoria = kategoria
+        self._level: str = level
+        self._category: str = category
 
-        self.button = QtWidgets.QPushButton("Losuj kolejne hasło")
+        self.button_next_word = QtWidgets.QPushButton("Losuj kolejne hasło")
 
-        poczatkowe_slowo = self.pobierz_haslo()
-        self.text = QtWidgets.QLabel(poczatkowe_slowo, alignment=QtCore.Qt.AlignCenter)
+        first_word: str = self.get_word()
+        self.text = QtWidgets.QLabel(first_word, alignment=QtCore.Qt.AlignCenter)
 
-        czcionka = self.text.font()
-        czcionka.setPointSize(24)
-        czcionka.setBold(True)
-        self.text.setFont(czcionka)
+        _font = self.text.font()
+        _font.setPointSize(24)
+        _font.setBold(True)
+        self.text.setFont(_font)
 
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(self.text)
-        self.layout.addWidget(self.button)
+        self.layout.addWidget(self.button_next_word)
 
-        self.button.clicked.connect(self.magic)
-
-    def pobierz_haslo(self):
-
-        wynik = dm.get_final_word(self.poziom, self.kategoria)
-
-        if wynik is None:
-            return f"[Brak haseł dla:\nPoziom: '{self.poziom}'\nKategoria: '{self.kategoria}']"
-        slowo = wynik[0]
-        return " ".join(slowo)
+        self.button_next_word.clicked.connect(self.button_next_word_click)
 
     @QtCore.Slot()
-    def magic(self):
-        self.text.setText(self.pobierz_haslo())
+    def button_next_word_click(self):
+        self.text.setText(self.get_word())
+
+    def get_word(self) -> str:
+        result: str = dm.get_final_word(self._level, self._category)
+
+        if result is None:
+            return f"[Brak haseł dla:\nPoziom: '{self._level}'\nKategoria: '{self._category}']"
+        slowo = result[0]
+        return " ".join(slowo)
 
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
+    dm = DataManager()
 
-    wybrany_poziom = "łatwy"
-    wybrana_kategoria = "Zwierzęta"
-
+    selected_level: str = "łatwy"
+    selected_category: str = "Zwierzęta"
 
     print(f"Uruchamiam grę dla odczytanych z pliku danych:")
-    print(f" - Poziom: '{wybrany_poziom}'")
-    print(f" - Kategoria: '{wybrana_kategoria}'")
+    print(f" - Poziom: '{selected_level}'")
+    print(f" - Kategoria: '{selected_category}'")
 
-    widget = MyWidget(poziom=wybrany_poziom, kategoria=wybrana_kategoria)
+    widget = GameWindow(level=selected_level, category=selected_category)
     widget.resize(800, 600)
-    widget.setWindowTitle(f"Wisielec - {wybrany_poziom}: {wybrana_kategoria}")
+    widget.setWindowTitle(f"Wisielec - {selected_level}: {selected_category}")
     widget.show()
 
     sys.exit(app.exec())
