@@ -4,16 +4,30 @@ from PySide6 import QtCore, QtWidgets
 from data_manager import DataManager
 
 class GameWindow(QtWidgets.QWidget):
-    def __init__(self, level: str, category: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
 
-        self._level: str = level
-        self._category: str = category
+        # Wybór poziomu
+        self.combo_level = QtWidgets.QComboBox()
+        self.combo_level.addItems(dm.get_available_levels())
+        self._level = self.combo_level.currentText()
+        self.combo_level.textActivated.connect(self.on_level_changed)
+
+        # Wybór kategorii
+        self.combo_category = QtWidgets.QComboBox()
+        self.combo_category.addItems(dm.get_categories_for_level(self._level))
+        self._category = self.combo_category.currentText()
+        self.combo_category.textActivated.connect(self.on_category_changed)
+
+        # tymczasowe wyświetlanie poziom i kategorii
+        self.label = QtWidgets.QLabel(f"Current Selection: {self._level}")
+        self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
 
         self.button_next_word = QtWidgets.QPushButton("Losuj kolejne hasło")
 
         first_word: str = self.get_word()
-        self.text = QtWidgets.QLabel(first_word, alignment=QtCore.Qt.AlignCenter)
+        self.text = QtWidgets.QLabel(first_word, alignment = QtCore.Qt.AlignmentFlag.AlignCenter)
 
         _font = self.text.font()
         _font.setPointSize(24)
@@ -23,15 +37,28 @@ class GameWindow(QtWidgets.QWidget):
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.addWidget(self.text)
         self.layout.addWidget(self.button_next_word)
-
+        self.layout.addWidget(self.combo_level)
+        self.layout.addWidget(self.combo_category)
+        self.layout.addWidget(self.label)
         self.button_next_word.clicked.connect(self.button_next_word_click)
 
+    @QtCore.Slot()
+    def on_level_changed(self, selected_text):
+        # Wymuszenie update GUI, po zmianie poziomu
+        self.label.setText(f"Current Selection: {selected_text} {self._category}")
+        self._level = selected_text
+
+    @QtCore.Slot()
+    def on_category_changed(self, selected_text):
+        # Wymuszenie update GUI, po zmianie kategorii
+        self.label.setText(f"Current Selection: {self._level}{selected_text}")
+        self._category = selected_text
     @QtCore.Slot()
     def button_next_word_click(self):
         self.text.setText(self.get_word())
 
     def get_word(self) -> str:
-        result: str = dm.get_final_word(self._level, self._category)
+        result: tuple[list[str],int]|None = dm.get_final_word(self._level, self._category)
 
         if result is None:
             return f"[Brak haseł dla:\nPoziom: '{self._level}'\nKategoria: '{self._category}']"
@@ -43,16 +70,11 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication([])
     dm = DataManager()
 
-    selected_level: str = "łatwy"
-    selected_category: str = "Zwierzęta"
-
     print(f"Uruchamiam grę dla odczytanych z pliku danych:")
-    print(f" - Poziom: '{selected_level}'")
-    print(f" - Kategoria: '{selected_category}'")
 
-    widget = GameWindow(level=selected_level, category=selected_category)
+    widget = GameWindow()
     widget.resize(800, 600)
-    widget.setWindowTitle(f"Wisielec - {selected_level}: {selected_category}")
+    widget.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym")
     widget.show()
 
     sys.exit(app.exec())
