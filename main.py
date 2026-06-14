@@ -3,6 +3,59 @@ from PySide6 import QtCore, QtWidgets
 
 from data_manager import DataManager
 from stats_manager import StatsManager
+from save_manager import SaveManager
+
+
+class StatsDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Statystyki Graczy")
+        self.resize(500, 300)
+
+        # Inicjalizacja managera, żeby pobrać świeże dane
+        self._stats_manager = StatsManager()
+
+        # Główny układ okna dialogowego
+        layout = QtWidgets.QVBoxLayout(self)
+
+        # Tworzenie tabeli
+        self.table = QtWidgets.QTableWidget()
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["Gracz", "Rozegrane gry", "Max Seria", "Skuteczność"])
+
+        # Ładne rozciąganie kolumn, żeby wypełniły okno
+        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)  # Blokada edycji
+
+        layout.addWidget(self.table)
+
+        # Przycisk zamknięcia
+        btn_close = QtWidgets.QPushButton("Zamknij")
+        btn_close.clicked.connect(self.accept)
+        layout.addWidget(btn_close)
+
+        # Załadowanie danych do tabeli
+        self.load_data()
+
+    def load_data(self):
+        # Pobieramy pełną strukturę z pliku JSON
+        stats = self._stats_manager._read_json()
+        players = stats.get("players", {})
+
+        self.table.setRowCount(len(players))
+
+        # Wypełnianie tabeli wiersz po wierszu
+        for row, player_name in enumerate(players.keys()):
+            # Korzystamy z get_player_stats, bo ona automatycznie liczy % skuteczności
+            p_stats = self._stats_manager.get_player_stats(player_name)
+
+            if p_stats:
+                self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(player_name))
+                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(p_stats["games_played"])))
+                self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(str(p_stats["max_win_streak"])))
+                self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(f"{p_stats['accuracy_percentage']}%"))
+
+
 
 class GameWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
@@ -11,7 +64,7 @@ class GameWindow(QtWidgets.QMainWindow):
         self.resize(800, 600)
         self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym")
         self._data_manager = DataManager()
-        
+        self._save_manager = SaveManager()
 
         # Ustalenie layout głównego całego okna
         master_layout = QtWidgets.QVBoxLayout()
@@ -115,12 +168,50 @@ class GameWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def on_save_game_clicked(self) -> None:
         #Slot obsługujący zapis aktualnego stanu rozgrywki.
-        pass
+        # Ponieważ guessed_letters to Pythonowy `set` (zbiór), musimy go
+        # zmienić na listę, bo JSON nie potrafi zapisać zbiorów bezpośrednio.
+        state = {
+            "level": self._level,
+            "category": self._category,
+            "current_word": self.current_word,
+            "wrong_guesses_counter": self.wrong_guesses_counter,
+            "guessed_letters": list(self.guessed_letters)
+        }
+
+        self._save_manager.save_state(state)
+
+        QtWidgets.QMessageBox.information(
+            self, "Zapisano", "Aktualny stan gry został pomyślnie zapisany!"
+        )
 
     @QtCore.Slot()
     def on_load_game_clicked(self) -> None:
         #Slot obsługujący wczytanie zapisanego stanu rozgrywki.
-        print("Odczyt stanu gry... (placeholder)")
+        state = self._save_manager.load_state()
+
+        if state is None:
+            QtWidgets.QMessageBox.warning(
+                self, "Błąd", "Nie znaleziono żadnego zapisanego stanu gry!"
+            )
+            return
+
+        # Przywracanie zmiennych stanu gry z wczytanego słownika
+        self._level = state["level"]
+        self._category = state["category"]
+        self.current_word = state["current_word"]
+        self.wrong_guesses_counter = state["wrong_guesses_counter"]
+
+        # Konwertujemy listę z JSONa z powrotem na set()
+        self.guessed_letters = set(state["guessed_letters"])
+
+        # Wymuszenie aktualizacji interfejsu (GUI), aby pokazać wczytany stan
+        self.update_word_display()
+        self.update_counter_display()
+
+
+        QtWidgets.QMessageBox.information(
+            self, "Wczytano", "Gra została pomyślnie przywrócona!"
+        )
 
     @QtCore.Slot()
     def on_rules_clicked(self) -> None:
