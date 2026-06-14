@@ -10,7 +10,7 @@ class StatsDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Statystyki Graczy")
-        self.resize(500, 300)
+        self.resize(400, 300) # Zmniejszyłem trochę szerokość okna, bo mamy mniej kolumn
 
         # Inicjalizacja managera, żeby pobrać świeże dane
         self._stats_manager = StatsManager()
@@ -18,10 +18,10 @@ class StatsDialog(QtWidgets.QDialog):
         # Główny układ okna dialogowego
         layout = QtWidgets.QVBoxLayout(self)
 
-        # Tworzenie tabeli
+        # Tworzenie tabeli - TERAZ 3 KOLUMNY zamiast 4
         self.table = QtWidgets.QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Gracz", "Rozegrane gry", "Max Seria", "Skuteczność"])
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Rozegrane gry", "Max Seria", "Skuteczność"])
 
         # Ładne rozciąganie kolumn, żeby wypełniły okno
         self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
@@ -50,11 +50,10 @@ class StatsDialog(QtWidgets.QDialog):
             p_stats = self._stats_manager.get_player_stats(player_name)
 
             if p_stats:
-                self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(player_name))
-                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(p_stats["games_played"])))
+                # Pomiary wrzucamy od kolumny 0, całkowicie ignorując zmienną player_name
+                self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(p_stats["games_played"])))
                 self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(str(p_stats["max_win_streak"])))
-                self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(f"{p_stats['accuracy_percentage']}%"))
-
+                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(f"{p_stats['accuracy_percentage']}%"))
 
 
 class GameWindow(QtWidgets.QMainWindow):
@@ -64,6 +63,7 @@ class GameWindow(QtWidgets.QMainWindow):
         self.resize(800, 600)
         self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym")
         self._data_manager = DataManager()
+        self._stats_manager = StatsManager()
         self._save_manager = SaveManager()
 
         # Ustalenie layout głównego całego okna
@@ -117,7 +117,7 @@ class GameWindow(QtWidgets.QMainWindow):
         buttons_grid.addWidget(self.button_rules, 0, 1)
         buttons_grid.addWidget(self.button_stats, 1, 1)
 
-        # Podpięcie sygnałów pod przyszłe metody (sloty)
+        # Podpięcie sygnałów pod  metody
         self.button_save_game.clicked.connect(self.on_save_game_clicked)
         self.button_load_game.clicked.connect(self.on_load_game_clicked)
         self.button_rules.clicked.connect(self.on_rules_clicked)
@@ -140,10 +140,6 @@ class GameWindow(QtWidgets.QMainWindow):
         _font.setBold(True)
         self.text.setFont(_font)
 
-        # Ustawienie elementów paska bocznego
-        navigation_bar_layout.addWidget(self.button_next_word)
-        navigation_bar_layout.addWidget(combo_level)
-        navigation_bar_layout.addWidget(combo_category)
         # Ustawienie elementów paska nawigacji
         navigation_bar_layout.addWidget(self.button_next_word)
         navigation_bar_layout.addWidget(combo_level)
@@ -320,7 +316,23 @@ class GameWindow(QtWidgets.QMainWindow):
                 self.end_game(won=False)
 
     def end_game(self, won: bool):
-        """Handles win/loss popups."""
+        # Wyliczamy statystyki liter na podstawie przebiegu bieżącej rozgrywki
+        total_letters = len(self.guessed_letters)
+        correct_letters = total_letters - self.wrong_guesses_counter
+
+        # Automatyczny zapis do stats.json
+        # Na razie sztywno wpisujemy "Gracz 1" - w przyszłości możesz tu podpiąć pole tekstowe na imię!
+        self._stats_manager.save_game_stats(
+            player_name="",
+            level=self._level,
+            category=self._category,
+            result=won,
+            total_letters_typed=total_letters,
+            correct_letters_typed=correct_letters,
+            word_text=self.current_word
+        )
+
+        # Wyświetlenie tradycyjnego okienka z informacją o wyniku
         msg = QtWidgets.QMessageBox(self)
         if won:
             msg.setWindowTitle("Gratulacje!")
@@ -329,6 +341,8 @@ class GameWindow(QtWidgets.QMainWindow):
             msg.setWindowTitle("Koniec Gry")
             msg.setText(f"Przegrałeś. Prawidłowe hasło: {self.current_word}")
         msg.exec()
+
+        # Reset planszy i wylosowanie nowego słowa
         self.button_next_word_click()
 
     def get_word(self) -> tuple[str,int]:

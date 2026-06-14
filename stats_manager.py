@@ -30,8 +30,8 @@ class StatsManager:
             default_structure = {"players": {}}
             self._write_json(default_structure)
 
-    def save_game_stats(self, player_name: str, level: str, category: str, result: bool,
-                        total_letters_typed: int, correct_letters_typed: int, word_text: str):
+    def save_game_stats(self, level: str, category: str, result: bool,
+                        total_letters_typed: int, correct_letters_typed: int, word_text: str, player_name: str = "Local player"):
 
         stats = self._read_json()
 
@@ -83,7 +83,7 @@ class StatsManager:
         total = player_data["total_letters"]
         correct = player_data["correct_letters"]
 
-        # Zabezpieczenie przed dzieleniem przez zero (gdy gracz jeszcze nie wpisał żadnej litery)
+        # Zabezpieczenie przed dzieleniem przez zero
         player_data["accuracy_percentage"] = round((correct / total) * 100, 2) if total > 0 else 0.0
 
         return player_data
