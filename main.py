@@ -2,6 +2,7 @@ import sys
 from PySide6 import QtCore, QtWidgets
 
 from data_manager import DataManager
+from stats_manager import StatsManager
 
 class GameWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
@@ -10,6 +11,7 @@ class GameWindow(QtWidgets.QMainWindow):
         self.resize(800, 600)
         self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym")
         self._data_manager = DataManager()
+        
 
         # Ustalenie layout głównego całego okna
         master_layout = QtWidgets.QVBoxLayout()
@@ -40,9 +42,33 @@ class GameWindow(QtWidgets.QMainWindow):
         combo_category.setMaxVisibleItems(3)
         combo_category.textActivated.connect(self.on_category_changed)
 
-        # Tymczasowe wyświetlanie poziom i kategorii -- do usunięcia
-        self.label = QtWidgets.QLabel(f"Current Selection: {self._level} {self._category}")
-        self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+
+        #  Układ siatki dla 4 przycisków ---
+        buttons_grid_widget = QtWidgets.QWidget()
+        buttons_grid = QtWidgets.QGridLayout(buttons_grid_widget)
+        buttons_grid.setContentsMargins(0, 0, 0, 0)
+        buttons_grid.setSpacing(5)  # Odstępy między przyciskami
+
+        # Tworzenie przycisków
+        self.button_save_game = QtWidgets.QPushButton("Zapis stanu gry")
+        self.button_load_game = QtWidgets.QPushButton("Odczyt stanu gry")
+        self.button_rules = QtWidgets.QPushButton("Zasady gry")
+        self.button_stats = QtWidgets.QPushButton("Statystyki")
+
+        # Rozmieszczenie w siatce: addWidget(widget, wiersz, kolumna)
+        # Kolumna 1
+        buttons_grid.addWidget(self.button_save_game, 0, 0)
+        buttons_grid.addWidget(self.button_load_game, 1, 0)
+        # Kolumna 2
+        buttons_grid.addWidget(self.button_rules, 0, 1)
+        buttons_grid.addWidget(self.button_stats, 1, 1)
+
+        # Podpięcie sygnałów pod przyszłe metody (sloty)
+        self.button_save_game.clicked.connect(self.on_save_game_clicked)
+        self.button_load_game.clicked.connect(self.on_load_game_clicked)
+        self.button_rules.clicked.connect(self.on_rules_clicked)
+        self.button_stats.clicked.connect(self.on_stats_clicked)
 
         self.button_next_word = QtWidgets.QPushButton("Losuj kolejne hasło")
 
@@ -65,7 +91,13 @@ class GameWindow(QtWidgets.QMainWindow):
         navigation_bar_layout.addWidget(self.button_next_word)
         navigation_bar_layout.addWidget(combo_level)
         navigation_bar_layout.addWidget(combo_category)
-        navigation_bar_layout.addWidget(self.label)
+        # Ustawienie elementów paska nawigacji
+        navigation_bar_layout.addWidget(self.button_next_word)
+        navigation_bar_layout.addWidget(combo_level)
+        navigation_bar_layout.addWidget(combo_category)
+
+        # Wrzucamy siatkę z 4 przyciskami zamiast starego labela
+        navigation_bar_layout.addWidget(buttons_grid_widget)
         self.button_next_word.clicked.connect(self.button_next_word_click)
 
         # Ustawienie głównego okna rozgrywki
@@ -81,16 +113,46 @@ class GameWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(container)
 
     @QtCore.Slot()
+    def on_save_game_clicked(self) -> None:
+        #Slot obsługujący zapis aktualnego stanu rozgrywki.
+        pass
+
+    @QtCore.Slot()
+    def on_load_game_clicked(self) -> None:
+        #Slot obsługujący wczytanie zapisanego stanu rozgrywki.
+        print("Odczyt stanu gry... (placeholder)")
+
+    @QtCore.Slot()
+    def on_rules_clicked(self) -> None:
+        #Slot wyświetlający okienko z zasadami gry.
+        QtWidgets.QMessageBox.information(
+            self,
+            "Zasady gry",
+            "Zasady gry Wisielec:"
+        )
+
+    @QtCore.Slot()
+    def on_stats_clicked(self) -> None:
+        # Tworzymy instancję naszego nowego okna dialogowego
+        dialog = StatsDialog(self)
+        # .exec() otwiera okno jako "modalne" (blokuje okno główne, dopóki nie zamkniesz statystyk)
+        dialog.exec()
+
+
+
+
+
+    @QtCore.Slot()
     def on_level_changed(self, selected_text: str) -> None:
         # Wymuszenie update GUI, po zmianie poziomu
-        self.label.setText(f"Current Selection: {selected_text} {self._category}")
+
         self._level = selected_text
         self.button_next_word_click()
 
     @QtCore.Slot()
     def on_category_changed(self, selected_text: str) -> None:
         # Wymuszenie update GUI, po zmianie kategorii
-        self.label.setText(f"Current Selection: {self._level} {selected_text}")
+
         self._category = selected_text
         self.button_next_word_click()
 

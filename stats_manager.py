@@ -2,70 +2,102 @@ import json
 import os
 from datetime import datetime
 
+
 class StatsManager:
     def __init__(self):
-        # Relatywny zapis ścieżek, dla unwersalnosci
+        # Relatywny zapis ścieżek, dla uniwersalności
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self._full_path = os.path.join(base_dir, 'data', 'stats.json')
         self._ensure_file_exists()
 
     def _read_json(self):
-        with open(self._full_path, 'r', encoding = 'utf-8') as json_file:
+        with open(self._full_path, 'r', encoding='utf-8') as json_file:
             return json.load(json_file)
 
     def _write_json(self, data: dict):
-        with open(self._full_path, 'w', encoding = 'utf-8') as json_file:
-            json.dump(data, json_file, ensure_ascii = False, indent = 4)
+        with open(self._full_path, 'w', encoding='utf-8') as json_file:
+            json.dump(data, json_file, ensure_ascii=False, indent=4)
+
     def _ensure_file_exists(self):
         dir_name = os.path.dirname(self._full_path)
 
-        #sprawdzenie czy jest folder data i ewnetualne utworzenie go
+        # Sprawdzenie czy jest folder data i ewentualne utworzenie go
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
-        #sprawdzenie czy jest plik stats.json i ewenetualne utworzenie go
+        # Sprawdzenie czy jest plik stats.json i ewentualne utworzenie go
         if not os.path.exists(self._full_path):
             default_structure = {"players": {}}
             self._write_json(default_structure)
 
-    def save_game_stats(self, player_name: str, score: int, level: str, category: str, result: bool):
-        #Zapis statystyk gry danego gracza
-        #wczytanie aktualnego stanu pliku
+    def save_game_stats(self, player_name: str, level: str, category: str, result: bool,
+                        total_letters_typed: int, correct_letters_typed: int, word_text: str):
+
         stats = self._read_json()
 
-        #obsługa nowego gracza
+        # Obsługa nowego gracza z nową strukturą pól
         if player_name not in stats["players"]:
             stats["players"][player_name] = {
                 "games_played": 0,
-                "high_score": 0,
-                "high_score_level": "no previous gameplays",
-                "high_score_category": "no previous gameplays",
-                "history": []
+                "total_letters": 0,
+                "correct_letters": 0,
+                "current_win_streak": 0,  # Aktualna seria zwycięstw
+                "max_win_streak": 0,  # Rekordowa seria gier bez porażki (high-score serii)
+                "won_words_history": []  # Lista haseł, na których wygrano
             }
-        stats["players"][player_name]["games_played"] += 1
-        
-        if score > stats["players"][player_name]["high_score"]:
-            stats["players"][player_name]["high_score"] = score
-            stats["players"][player_name]["high_score_level"] = level
-            stats["players"][player_name]["high_score_category"] = category
 
-        game_info = {
-            "date" : datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-            "score" : score,
-            "level" : level,
-            "category" : category,
-            "result": "Won" if result else "Lost"
-        }
-        #zapis informacji o grze do słownika z historią gier
-        stats["players"][player_name]["history"].append(game_info)
+        player = stats["players"][player_name]
 
-        #zapis zmodygikowanego słownika do pliku json
+        # 1. Aktualizacja ogólnych liczników gier i znaków
+        player["games_played"] += 1
+        player["total_letters"] += total_letters_typed
+        player["correct_letters"] += correct_letters_typed
+
+        # 2. Logika serii zwycięstw (high-score gier bez porażki) i historii wygranych haseł
+        if result:  # Jeśli gracz WYGRAŁ
+            player["current_win_streak"] += 1
+            # Sprawdzenie czy pobito rekord serii bez porażki
+            if player["current_win_streak"] > player["max_win_streak"]:
+                player["max_win_streak"] = player["current_win_streak"]
+
+            # Dodanie hasła do historii wygranych (tylko jeśli jeszcze go tam nie ma)
+            if word_text.upper() not in player["won_words_history"]:
+                player["won_words_history"].append(word_text.upper())
+        else:  # Jeśli gracz PRZEGRAŁ
+            player["current_win_streak"] = 0  # Seria zostaje przerwana
+
+        # Zapis zmodyfikowanego słownika do pliku json
         self._write_json(stats)
 
-    #FIX ME
-    def get_leader_board(self) -> list:
-        pass
+    def get_player_stats(self, player_name: str) -> dict | None:
+        """Zwraca statystyki gracza wzbogacone o dynamicznie wyliczoną skuteczność."""
+        stats = self._read_json()
+        players = stats.get("players", {})
 
-    def get_player_stats(self, player_name: str) -> dict:
-        pass
+        if player_name not in players:
+            return None
 
+        player_data = players[player_name].copy()
+
+        # Dynamiczne wyliczanie skuteczności procentowej
+        total = player_data["total_letters"]
+        correct = player_data["correct_letters"]
+
+        # Zabezpieczenie przed dzieleniem przez zero (gdy gracz jeszcze nie wpisał żadnej litery)
+        player_data["accuracy_percentage"] = round((correct / total) * 100, 2) if total > 0 else 0.0
+
+        return player_data
+
+    def reset_all_stats(self) -> None:
+        default_structure = {"players": {}}
+        self._write_json(default_structure)
+
+    def delete_player_stats(self, player_name: str) -> bool:
+        stats = self._read_json()
+
+        if player_name in stats["players"]:
+            del stats["players"][player_name]
+            self._write_json(stats)
+            return True
+
+        return False
