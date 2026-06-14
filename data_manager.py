@@ -23,7 +23,18 @@ class DataManager:
         for row in self._all_words:
             if row['poziom'] not in levels:
                 levels.append(row['poziom'])
+        for index, level in enumerate(levels):
+            levels[index] = level.capitalize()
         return levels
+
+    def get_available_categories(self) -> list[str]:
+        categories: list[str] = []
+        for row in self._all_words:
+            if row['kategoria'] not in categories:
+                categories.append(row['kategoria'])
+        for index, category in enumerate(categories):
+            categories[index] = category.capitalize()
+        return categories
 
     def get_categories_for_level(self, chosen_level: str) -> list[str]:
         # Filtruje kategorie dostępne tylko dla danego poziomu
@@ -34,11 +45,11 @@ class DataManager:
                     categories.append(row['kategoria'])
         return categories
 
-    def get_final_word(self, chosen_level, chosen_category) -> tuple[list[str], int] | None:
+    def get_final_word(self, chosen_level: str, chosen_category: str) -> tuple[list[str], int] | None:
         # Losuje hasło spełniające oba warunki
         candidates: list[str] = []
         for row in self._all_words:
-            if row['poziom'] == chosen_level and row['kategoria'] == chosen_category:
+            if row['poziom'] == chosen_level.lower() and row['kategoria'] == chosen_category:
                 candidates.append(row)
 
         if not candidates:
