@@ -23,8 +23,7 @@ class DataManager:
         for row in self._all_words:
             if row['poziom'] not in levels:
                 levels.append(row['poziom'])
-        for index, level in enumerate(levels):
-            levels[index] = level.capitalize()
+        levels[:] = [level.capitalize() for level in levels]
         return levels
 
     def get_available_categories(self) -> list[str]:
@@ -32,8 +31,7 @@ class DataManager:
         for row in self._all_words:
             if row['kategoria'] not in categories:
                 categories.append(row['kategoria'])
-        for index, category in enumerate(categories):
-            categories[index] = category.capitalize()
+        categories[:] = [category.capitalize() for category in categories]
         return categories
 
     def get_categories_for_level(self, chosen_level: str) -> list[str]:
