@@ -35,44 +35,72 @@ class StatsDialog(QtWidgets.QDialog):
         self.words_list = QtWidgets.QListWidget()
         layout.addWidget(self.words_list)
 
+        # 3. SEKCJA: Dolne przyciski akcji (układ poziomy)
+        buttons_layout = QtWidgets.QHBoxLayout()
+
+        # Przycisk resetowania
+        self.btn_reset = QtWidgets.QPushButton("Resetuj statystyki")
+        self.btn_reset.setStyleSheet("color: #c0392b; font-weight: bold;")  # Czerwony akcent ostrzegawczy
+        self.btn_reset.clicked.connect(self.on_reset_clicked)
+        buttons_layout.addWidget(self.btn_reset)
+
         # Przycisk zamknięcia
         btn_close = QtWidgets.QPushButton("Zamknij raport")
         btn_close.clicked.connect(self.accept)
-        layout.addWidget(btn_close)
+        buttons_layout.addWidget(btn_close)
+
+        # Dodajemy układ przycisków do głównego layoutu okna
+        layout.addLayout(buttons_layout)
 
         # Załadowanie kompletnych danych
         self.load_data()
 
     def load_data(self):
-        # Pobieramy statystyki dla gracza. Jeśli w StatsManager zmieniłeś
-        # domyślną nazwę na inną, wpisz ją tutaj (np. "Local player")
         p_stats = self._stats_manager.get_player_stats("Local player")
 
         if p_stats:
             self.table.setRowCount(1)
-            # Kolumna 0: Gry, Kolumna 1: Seria, Kolumna 2: Skuteczność
             self.table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(p_stats.get("games_played", 0))))
             self.table.setItem(0, 1, QtWidgets.QTableWidgetItem(str(p_stats.get("max_win_streak", 0))))
             self.table.setItem(0, 2, QtWidgets.QTableWidgetItem(f"{p_stats.get('accuracy_percentage', 0.0)}%"))
 
-            # Wypełnianie listy historycznych haseł
             history_words = p_stats.get("won_words_history", [])
 
-            self.words_list.clear()  # Czyszczenie listy przed dodaniem elementów
+            self.words_list.clear()
             if history_words:
                 for word in history_words:
                     self.words_list.addItem(f"  {word}")
             else:
                 self.words_list.addItem("Brak wygranych haseł na tym profilu. Czas coś wygrać!")
         else:
-            # Jeśli get_player_stats zwróciło None, oznacza to, że w stats.json
-            # nie ma jeszcze żadnego gracza o tej nazwie
             self.table.setRowCount(1)
             self.table.setItem(0, 0, QtWidgets.QTableWidgetItem("0"))
             self.table.setItem(0, 1, QtWidgets.QTableWidgetItem("0"))
             self.table.setItem(0, 2, QtWidgets.QTableWidgetItem("0.0%"))
+            self.words_list.clear()
             self.words_list.addItem("Brak zapisanych gier. Rozegraj pierwszą partię!")
 
+    @QtCore.Slot()
+    def on_reset_clicked(self) -> None:
+        """Slot obsługujący bezpieczne czyszczenie statystyk z potwierdzeniem."""
+        # Wyświetlamy okienko pytające z przyciskami Tak/Nie
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Potwierdzenie resetu",
+            "Czy na pewno chcesz bezpowrotnie usunąć wszystkie statystyki i historię haseł?",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No  # Domyślnie zaznaczony przycisk "Nie"
+        )
+
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+            # Czyszczenie pliku stats.json przez manager
+            self._stats_manager.reset_all_stats()
+            # Ponowne załadowanie widoku (pokaże zera i komunikat o braku gier)
+            self.load_data()
+
+            QtWidgets.QMessageBox.information(
+                self, "Zresetowano", "Statystyki zostały pomyślnie wyczyszczone."
+            )
 
 class GameWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
