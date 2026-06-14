@@ -2,12 +2,13 @@ import sys
 from PySide6 import QtCore, QtWidgets
 
 from data_manager import DataManager
+from Responsive_Widget import ResponsiveBgFrame
 
 class GameWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
 
-        self.resize(800, 600)
+        self.resize(960, 540)
         self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym")
         self._data_manager = DataManager()
 
@@ -69,13 +70,21 @@ class GameWindow(QtWidgets.QMainWindow):
         self.button_next_word.clicked.connect(self.button_next_word_click)
 
         # Ustawienie głównego okna rozgrywki
-        main_content = QtWidgets.QWidget()
-        main_layout = QtWidgets.QVBoxLayout(main_content)
+        self.main_content = ResponsiveBgFrame("Assets/klasa_latwy.png")
+        main_layout = QtWidgets.QVBoxLayout(self.main_content)
         main_layout.addWidget(self.text)
 
+
         # Ustawianie ułożenia całego okna gry
-        master_layout.addWidget(main_content)
+        master_layout.addWidget(self.main_content)
         master_layout.addWidget(navigation_bar)
+        master_layout.addStretch()  # <--- UNCOMMENT THIS LINE
+
+        # --- Line 81: Let the layout know how the labels inside handle spacing ---
+        # Right now, your QVBoxLayout(self.main_content) puts self.text in the center.
+        # Let's align the text properly so it doesn't try to stretch the parent layout bounds.
+        main_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
         container = QtWidgets.QWidget()
         container.setLayout(master_layout)
         self.setCentralWidget(container)
@@ -85,6 +94,14 @@ class GameWindow(QtWidgets.QMainWindow):
         # Wymuszenie update GUI, po zmianie poziomu
         self.label.setText(f"Current Selection: {selected_text} {self._category}")
         self._level = selected_text
+
+        if selected_text == "Łatwy" :
+            self.main_content.change_image('Assets/klasa_latwy.png')
+        elif selected_text == "Średni":
+            self.main_content.change_image('Assets/klasa_sredni.png')
+        elif selected_text == "Trudny" :
+            self.main_content.change_image('Assets/klasa_trudny.png')
+
         self.button_next_word_click()
 
     @QtCore.Slot()
@@ -121,6 +138,7 @@ class GameWindow(QtWidgets.QMainWindow):
                 display_letters.append(letter)  # Keep spaces/hyphens visible
             else:
                 display_letters.append("_")
+            display_letters.append(" ")
         return " ".join(display_letters)
 
     def update_counter_display(self):
@@ -184,8 +202,36 @@ class GameWindow(QtWidgets.QMainWindow):
         if result is None:
             return f"[Brak haseł dla:\nPoziom: '{self._level}'\nKategoria: '{self._category}']", -1
 
-        return " ".join(result[0]), result[1]
+        return "".join(result[0]), result[1]
 
+    def resizeEvent(self, event):
+        """Intercepts window resize events, forces 2:1 game frame scale,
+
+        and snaps the main window tightly around the content.
+        """
+        # Call the default behavior first
+        super().resizeEvent(event)
+
+        # 1. Determine the active width of the central widget
+        current_width = self.centralWidget().width()
+
+        # 2. Calculate the strict 2:1 height for the game artwork
+        target_game_height = int(current_width / 2)
+
+        # 3. Lock the game frame to this exact height
+        self.main_content.setFixedHeight(target_game_height)
+
+        # 4. Grab the physical height of your bottom navigation bar
+        # (It's set to min/max height of 60px in your code, but checking dynamically is safer)
+        nav_height = self.findChild(QtWidgets.QFrame, "Navigation_bar").height()
+
+        # 5. The perfect window height is: Game Height + Nav Bar Height + Title Bar/Margins
+        # We can calculate this by asking the master layout for its minimum total hint.
+        total_content_height = target_game_height + nav_height
+
+        # 6. Force the window framework to match this height exactly.
+        # This completely cuts off the trailing dead space!
+        self.setFixedHeight(total_content_height)
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
