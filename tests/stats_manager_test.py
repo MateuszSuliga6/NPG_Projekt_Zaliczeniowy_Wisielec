@@ -31,10 +31,10 @@ class TestStatsManager(unittest.TestCase):
         self.assertIn("players", data)
         self.assertEqual(data["players"], {})
 
-    def test_save_game_stats_new_player(self):
-        """Test czy poprawnie dodaje nowego gracza i inicjalizuje nowe statystyki klawiszy."""
+    def test_save_game_stats_default_local_player(self):
+        """Test czy poprawnie dodaje domyślnego gracza 'Local player' i inicjalizuje statystyki."""
+        # Wywołujemy zgodnie z nową kolejnością (player_name na końcu, domyślny)
         self.manager.save_game_stats(
-            player_name="Tymoteusz",
             level="Easy",
             category="Kino",
             result=True,
@@ -44,9 +44,9 @@ class TestStatsManager(unittest.TestCase):
         )
 
         stats = self.manager._read_json()
-        self.assertIn("Tymoteusz", stats["players"])
+        self.assertIn("Local player", stats["players"])
 
-        player_data = stats["players"]["Tymoteusz"]
+        player_data = stats["players"]["Local player"]
         self.assertEqual(player_data["games_played"], 1)
         self.assertEqual(player_data["total_letters"], 10)
         self.assertEqual(player_data["correct_letters"], 6)
@@ -54,21 +54,22 @@ class TestStatsManager(unittest.TestCase):
         self.assertIn("KRAKÓW", player_data["won_words_history"])
 
     def test_win_streaks_and_word_history(self):
-        """Test czy poprawnie liczy serię wygranych bez porażki i zapisuje unikalne hasła."""
-        # 1. Pierwsza wygrana
-        self.manager.save_game_stats("Tymoteusz", "Easy", "Kino", True, 8, 5, "BANAN")
+        """Test czy poprawnie liczy serię wygranych dla Local player i zapisuje historię słów."""
+        # 1. Pierwsza wygrana (używamy poprawnej nowej kolejności argumentów)
+        self.manager.save_game_stats("Easy", "Kino", True, 8, 5, "BANAN")
         # 2. Druga wygrana (seria powinna wynosić 2)
-        self.manager.save_game_stats("Tymoteusz", "Easy", "Kino", True, 10, 6, "KOT")
+        self.manager.save_game_stats("Easy", "Kino", True, 10, 6, "KOT")
 
         stats = self.manager._read_json()
-        self.assertEqual(stats["players"]["Tymoteusz"]["current_win_streak"], 2)
-        self.assertEqual(stats["players"]["Tymoteusz"]["max_win_streak"], 2)
+        player_data = stats["players"]["Local player"]
+        self.assertEqual(player_data["current_win_streak"], 2)
+        self.assertEqual(player_data["max_win_streak"], 2)
 
         # 3. Porażka (aktualna seria spada do 0, ale max_win_streak zostaje na 2)
-        self.manager.save_game_stats("Tymoteusz", "Hard", "Kino", False, 12, 3, "PYTHON")
+        self.manager.save_game_stats("Hard", "Kino", False, 12, 3, "PYTHON")
 
         stats = self.manager._read_json()
-        player_data = stats["players"]["Tymoteusz"]
+        player_data = stats["players"]["Local player"]
         self.assertEqual(player_data["current_win_streak"], 0)
         self.assertEqual(player_data["max_win_streak"], 2)
 
@@ -77,11 +78,11 @@ class TestStatsManager(unittest.TestCase):
         self.assertEqual(len(player_data["won_words_history"]), 2)
 
     def test_accuracy_percentage_calculation(self):
-        """Test czy metoda get_player_stats poprawnie i dynamicznie wylicza procent skuteczności."""
-        self.manager.save_game_stats("Tymoteusz", "Easy", "Kino", True, 20, 15, "TEST")
+        """Test czy metoda get_player_stats poprawnie wylicza procent skuteczności dla Local player."""
+        self.manager.save_game_stats("Easy", "Kino", True, 20, 15, "TEST")
 
-        # Pobieramy statystyki za pomocą publicznej metody
-        player_stats = self.manager.get_player_stats("Tymoteusz")
+        # Pobieramy statystyki za pomocą publicznej metody dla naszego profilu
+        player_stats = self.manager.get_player_stats("Local player")
 
         # Oczekiwana skuteczność: (15 / 20) * 100 = 75.0%
         self.assertIsNotNone(player_stats)
