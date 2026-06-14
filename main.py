@@ -9,51 +9,69 @@ from save_manager import SaveManager
 class StatsDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Statystyki Graczy")
-        self.resize(400, 300) # Zmniejszyłem trochę szerokość okna, bo mamy mniej kolumn
+        self.setWindowTitle("Twoje Osiągnięcia i Historia")
+        self.resize(450, 450)
 
-        # Inicjalizacja managera, żeby pobrać świeże dane
         self._stats_manager = StatsManager()
 
-        # Główny układ okna dialogowego
+        # Główny układ pionowy okna
         layout = QtWidgets.QVBoxLayout(self)
 
-        # Tworzenie tabeli - TERAZ 3 KOLUMNY zamiast 4
+        # 1. SEKCJA: Tabela statystyk ogólnych
+        layout.addWidget(QtWidgets.QLabel("<b>Ogólne statystyki:</b>"))
         self.table = QtWidgets.QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Rozegrane gry", "Max Seria", "Skuteczność"])
-
-        # Ładne rozciąganie kolumn, żeby wypełniły okno
         self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)  # Blokada edycji
-
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setFixedHeight(80)
         layout.addWidget(self.table)
 
+        # Odstęp między sekcjami
+        layout.addSpacing(15)
+
+        # 2. SEKCJA: Lista wygranych haseł
+        layout.addWidget(QtWidgets.QLabel("<b>Historia odgadniętych haseł:</b>"))
+        self.words_list = QtWidgets.QListWidget()
+        layout.addWidget(self.words_list)
+
         # Przycisk zamknięcia
-        btn_close = QtWidgets.QPushButton("Zamknij")
+        btn_close = QtWidgets.QPushButton("Zamknij raport")
         btn_close.clicked.connect(self.accept)
         layout.addWidget(btn_close)
 
-        # Załadowanie danych do tabeli
+        # Załadowanie kompletnych danych
         self.load_data()
 
     def load_data(self):
-        # Pobieramy pełną strukturę z pliku JSON
-        stats = self._stats_manager._read_json()
-        players = stats.get("players", {})
+        # Pobieramy statystyki dla gracza. Jeśli w StatsManager zmieniłeś
+        # domyślną nazwę na inną, wpisz ją tutaj (np. "Local player")
+        p_stats = self._stats_manager.get_player_stats("Local player")
 
-        self.table.setRowCount(len(players))
+        if p_stats:
+            self.table.setRowCount(1)
+            # Kolumna 0: Gry, Kolumna 1: Seria, Kolumna 2: Skuteczność
+            self.table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(p_stats.get("games_played", 0))))
+            self.table.setItem(0, 1, QtWidgets.QTableWidgetItem(str(p_stats.get("max_win_streak", 0))))
+            self.table.setItem(0, 2, QtWidgets.QTableWidgetItem(f"{p_stats.get('accuracy_percentage', 0.0)}%"))
 
-        # Wypełnianie tabeli wiersz po wierszu
-        for row, player_name in enumerate(players.keys()):
-            # Korzystamy z get_player_stats, bo ona automatycznie liczy % skuteczności
-            p_stats = self._stats_manager.get_player_stats(player_name)
+            # Wypełnianie listy historycznych haseł
+            history_words = p_stats.get("won_words_history", [])
 
-            if p_stats:
-                # Pomiary wrzucamy od kolumny 0, całkowicie ignorując zmienną player_name
-                self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(p_stats["games_played"])))
-                self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(str(p_stats["max_win_streak"])))
-                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(f"{p_stats['accuracy_percentage']}%"))
+            self.words_list.clear()  # Czyszczenie listy przed dodaniem elementów
+            if history_words:
+                for word in history_words:
+                    self.words_list.addItem(f"  {word}")
+            else:
+                self.words_list.addItem("Brak wygranych haseł na tym profilu. Czas coś wygrać!")
+        else:
+            # Jeśli get_player_stats zwróciło None, oznacza to, że w stats.json
+            # nie ma jeszcze żadnego gracza o tej nazwie
+            self.table.setRowCount(1)
+            self.table.setItem(0, 0, QtWidgets.QTableWidgetItem("0"))
+            self.table.setItem(0, 1, QtWidgets.QTableWidgetItem("0"))
+            self.table.setItem(0, 2, QtWidgets.QTableWidgetItem("0.0%"))
+            self.words_list.addItem("Brak zapisanych gier. Rozegraj pierwszą partię!")
 
 
 class GameWindow(QtWidgets.QMainWindow):
@@ -316,23 +334,25 @@ class GameWindow(QtWidgets.QMainWindow):
                 self.end_game(won=False)
 
     def end_game(self, won: bool):
-        # Wyliczamy statystyki liter na podstawie przebiegu bieżącej rozgrywki
+        # Zabezpieczenie antycheaterkie zwiazane z abusowaniem zapisywania stanu gry
+        self._save_manager.delete_save()
+
+        """Obsługuje zapis statystyk do pliku JSON oraz wyświetla pop-up końca gry."""
         total_letters = len(self.guessed_letters)
         correct_letters = total_letters - self.wrong_guesses_counter
 
-        # Automatyczny zapis do stats.json
-        # Na razie sztywno wpisujemy "Gracz 1" - w przyszłości możesz tu podpiąć pole tekstowe na imię!
+        # Wymuszamy zapis na dokładnie ten sam klucz, którego szuka okienko dialogowe
         self._stats_manager.save_game_stats(
-            player_name="",
             level=self._level,
             category=self._category,
             result=won,
             total_letters_typed=total_letters,
             correct_letters_typed=correct_letters,
-            word_text=self.current_word
+            word_text=self.current_word,
+            player_name="Local player"  # <--- UPEWNIJ SIĘ, ŻE TO TU JEST
         )
 
-        # Wyświetlenie tradycyjnego okienka z informacją o wyniku
+        # Wyświetlenie okienka z informacją o wyniku
         msg = QtWidgets.QMessageBox(self)
         if won:
             msg.setWindowTitle("Gratulacje!")

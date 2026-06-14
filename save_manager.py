@@ -27,3 +27,11 @@ class SaveManager:
                 return json.load(f)
         except Exception:
             return None
+
+    def delete_save(self) -> None:
+        """Usuwa plik zapisu gry, jeśli istnieje."""
+        if os.path.exists(self._save_path):
+            try:
+                os.remove(self._save_path)
+            except Exception:
+                pass
