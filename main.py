@@ -225,6 +225,7 @@ class GameWindow(QtWidgets.QMainWindow):
         container = QtWidgets.QWidget()
         container.setLayout(master_layout)
         self.setCentralWidget(container)
+        self.update_hud()
     
     def ask_for_player_name(self) -> str:
         """Wyświetla okienko z prośbą o podanie nicku przed startem gry."""
@@ -449,6 +450,12 @@ class GameWindow(QtWidgets.QMainWindow):
             # Check for Lose condition
             if self.wrong_guesses_counter >= self.max_wrong_guesses:
                 self.end_game(won=False)
+    
+    def update_hud(self):
+        """Aktualizuje elementy interfejsu (np. monety) na podstawie profilu gracza."""
+        stats = self._stats_manager.get_player_stats(self.player_name)
+        if stats:
+            self.main_content.set_coins(stats.get("coins", 0))
 
     def end_game(self, won: bool):
         # Zabezpieczenie antycheaterkie zwiazane z abusowaniem zapisywania stanu gry
@@ -481,6 +488,7 @@ class GameWindow(QtWidgets.QMainWindow):
 
         # Reset planszy i wylosowanie nowego słowa
         self.button_next_word_click()
+        self.update_hud()
 
     def get_word(self) -> tuple[str,int]:
         result: tuple[list[str],int]|None = self._data_manager.get_final_word(self._level, self._category)
