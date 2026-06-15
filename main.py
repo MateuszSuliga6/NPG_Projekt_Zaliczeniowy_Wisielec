@@ -178,14 +178,16 @@ class GameWindow(QtWidgets.QMainWindow):
         self.max_wrong_guesses = 6
         self.current_guess = None
 
-        # Display the initial masked word
-
-        #self.text = QtWidgets.QLabel(self.generate_masked_word(), alignment = QtCore.Qt.AlignmentFlag.AlignCenter)
-
         # Ustawienie głównego okna rozgrywki
         self.main_content = ResponsiveBgFrame("Assets/klasa_latwy.png")
         main_layout = QtWidgets.QVBoxLayout(self.main_content)
+
+        # --- FIX: Przekazanie pełnego stanu początkowego do rysowania przez QPainter ---
         self.main_content.set_word_display(self.generate_masked_word())
+        self.main_content.set_error_count(self.wrong_guesses_counter)
+        self.main_content.set_guessed_letters(self.guessed_letters)
+        self.main_content.set_pending_guess(None)
+
         '''
         main_layout.addWidget(self.text)
 
@@ -260,11 +262,23 @@ class GameWindow(QtWidgets.QMainWindow):
         self.update_word_display()
         self.update_counter_display()
 
+        # --- FIX: Przekazanie załadowanych danych prosto do warstwy graficznej ---
+        self.main_content.set_word_display(self.generate_masked_word())
+        self.main_content.set_error_count(self.wrong_guesses_counter)
+        self.main_content.set_guessed_letters(self.guessed_letters)
+        self.main_content.set_pending_guess(None)
+
+        # Aktualizacja tła dopasowana do wczytanego poziomu trudności
+        if self._level == "Łatwy":
+            self.main_content.change_image('Assets/klasa_latwy.png')
+        elif self._level == "Średni":
+            self.main_content.change_image('Assets/klasa_sredni.png')
+        elif self._level == "Trudny":
+            self.main_content.change_image('Assets/klasa_trudny.png')
 
         QtWidgets.QMessageBox.information(
             self, "Wczytano", "Gra została pomyślnie przywrócona!"
         )
-
     @QtCore.Slot()
     def on_rules_clicked(self) -> None:
         #Slot wyświetlający okienko z zasadami gry.
