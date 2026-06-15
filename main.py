@@ -7,8 +7,6 @@ from Responsive_Widget import ResponsiveBgFrame
 class GameWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-
-        self.resize(960, 540)
         self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym")
         self._data_manager = DataManager()
 
