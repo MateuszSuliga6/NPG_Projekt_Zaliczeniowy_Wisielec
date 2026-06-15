@@ -18,7 +18,7 @@ Rozgrywka polega na odgadywaniu ukrytego hasła poprzez stopniowe wskazywanie po
 
 * **Przygotowanie**: Komputer losuje słowo z bazy danych i wyświetla na ekranie poziomą linię kresek – każda kreska oznacza jedną ukrytą literę.
 * **Zgadywanie**: Gracz podaje pojedyncze litery. Jeśli wskazana litera znajduje się w haśle, program wpisuje ją w odpowiednie miejsca (może być ich więcej niż jedna w słowie).
-* **Błędy i rysunek**: Jeśli podanej litery nie ma w słowie, program dorysowuje jeden element do postaci wisielca. Maksymalna liczba błędów w grze wynosi dokładnie 6 - głowa, tułów ręce i nogi.
+* **Błędy i rysunek**: Jeśli podanej litery nie ma w słowie, program dorysowuje jeden element do postaci wisielca. Maksymalna liczba błędów w grze wynosi dokładnie 6 - głowa, tułów, ręce i nogi.
 
 
 # Potrzebne biblioteki
