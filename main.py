@@ -10,9 +10,11 @@ import ctypes
 
 
 class StatsDialog(QtWidgets.QDialog):
-    def __init__(self, parent=None):
+    # DODAJEMY paramater player_name
+    def __init__(self, player_name: str, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Twoje Osiągnięcia i Historia")
+        self.player_name = player_name # Zapisujemy go
+        self.setWindowTitle(f"Osiągnięcia: {self.player_name}") # Ładniejszy tytuł
         self.resize(450, 450)
 
         self._stats_manager = StatsManager()
@@ -59,7 +61,8 @@ class StatsDialog(QtWidgets.QDialog):
         self.load_data()
 
     def load_data(self):
-        p_stats = self._stats_manager.get_player_stats("Local player")
+        # ZMIANA: Pobieramy statystyki dla konkretnego gracza
+        p_stats = self._stats_manager.get_player_stats(self.player_name)
 
         if p_stats:
             self.table.setRowCount(1)
@@ -112,6 +115,10 @@ class GameWindow(QtWidgets.QMainWindow):
         self._data_manager = DataManager()
         self._stats_manager = StatsManager()
         self._save_manager = SaveManager()
+
+        # Pytanie o imie (nick)
+        self.player_name = self.ask_for_player_name()
+        self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym | Gracz: {self.player_name}")
 
         # Ustalenie layout głównego całego okna
         master_layout = QtWidgets.QVBoxLayout()
@@ -218,6 +225,21 @@ class GameWindow(QtWidgets.QMainWindow):
         container = QtWidgets.QWidget()
         container.setLayout(master_layout)
         self.setCentralWidget(container)
+    
+    def ask_for_player_name(self) -> str:
+        """Wyświetla okienko z prośbą o podanie nicku przed startem gry."""
+        text, ok = QtWidgets.QInputDialog.getText(
+            self, 
+            "Witaj w grze!", 
+            "Podaj swój nick, aby śledzić statystyki i zbierać monety:",
+            QtWidgets.QLineEdit.EchoMode.Normal,
+            ""
+        )
+        # Jeśli użytkownik wpisał nick i kliknął OK
+        if ok and text.strip():
+            return text.strip()
+        # Jeśli kliknął Anuluj lub nic nie wpisał, dajemy domyślny
+        return "Gość"
 
     @QtCore.Slot()
     def on_save_game_clicked(self) -> None:
@@ -309,9 +331,8 @@ class GameWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def on_stats_clicked(self) -> None:
-        # Tworzymy instancję naszego nowego okna dialogowego
-        dialog = StatsDialog(self)
-        # .exec() otwiera okno jako "modalne" (blokuje okno główne, dopóki nie zamkniesz statystyk)
+        # Przekazujemy nick gracza do okienka statystyk
+        dialog = StatsDialog(self.player_name, self)
         dialog.exec()
 
 
@@ -445,7 +466,7 @@ class GameWindow(QtWidgets.QMainWindow):
             total_letters_typed=total_letters,
             correct_letters_typed=correct_letters,
             word_text=self.current_word,
-            player_name="Local player"  # <--- UPEWNIJ SIĘ, ŻE TO TU JEST
+            player_name=self.player_name # <--- ZMIANA Z "Local player" NA self.player_name
         )
 
         # Wyświetlenie okienka z informacją o wyniku
