@@ -62,8 +62,15 @@ class StatsManager:
         if result:  # Jeśli gracz WYGRAŁ
             player["current_win_streak"] += 1
             
-            # --- NOWE: Nagroda w postaci monet za wygraną grę ---
-            player["coins"] += 10
+            # --- NOWE: Dynamiczna nagroda w postaci monet zależnie od poziomu ---
+            if level.lower() == "łatwy":
+                player["coins"] += 5
+            elif level.lower() == "średni":
+                player["coins"] += 10
+            elif level.lower() == "trudny":
+                player["coins"] += 15
+            else:
+                player["coins"] += 5  # Domyślna wartość w razie błędu
             
             # Sprawdzenie czy pobito rekord serii bez porażki
             if player["current_win_streak"] > player["max_win_streak"]:
