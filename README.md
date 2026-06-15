@@ -21,7 +21,10 @@ Rozgrywka polega na odgadywaniu ukrytego hasła poprzez stopniowe wskazywanie po
 * **Błędy i rysunek**: Jeśli podanej litery nie ma w słowie, program dorysowuje jeden element do postaci wisielca. Maksymalna liczba błędów w grze wynosi dokładnie 6 - głowa, tułów, ręce i nogi.
 
 
-# Potrzebne biblioteki
+# Wymagania Sprzętowe
+Gra jest dedykowana na komputery z systemem operacyjnym Windows
+## Potrzebne biblioteki
 * PySide6
-* csv
-* random
+* CSV
+* Random
+* JSON
