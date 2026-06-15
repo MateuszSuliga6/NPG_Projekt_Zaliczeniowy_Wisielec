@@ -128,20 +128,18 @@ class GameWindow(QtWidgets.QMainWindow):
         navigation_bar_layout.setContentsMargins(10, 20, 10, 20)
         navigation_bar_layout.setSpacing(15)
 
-        # Wybór poziomu
-        combo_level = QtWidgets.QComboBox()
-        combo_level.addItems(self._data_manager.get_available_levels())
-        self._level = combo_level.currentText()
-        combo_level.textActivated.connect(self.on_level_changed)
+        # Wybór poziomu (TERAZ JAKO POLE KLASY)
+        self.combo_level = QtWidgets.QComboBox()
+        self.combo_level.addItems(self._data_manager.get_available_levels())
+        self._level = self.combo_level.currentText()
+        self.combo_level.textActivated.connect(self.on_level_changed)
 
-        # Wybór kategorii
-        combo_category = QtWidgets.QComboBox()
-        combo_category.addItems(self._data_manager.get_available_categories())
-        self._category = combo_category.currentText()
-        combo_category.setMaxVisibleItems(3)
-        combo_category.textActivated.connect(self.on_category_changed)
-
-
+        # Wybór kategorii (TERAZ JAKO POLE KLASY)
+        self.combo_category = QtWidgets.QComboBox()
+        self.combo_category.addItems(self._data_manager.get_available_categories())
+        self._category = self.combo_category.currentText()
+        self.combo_category.setMaxVisibleItems(3)
+        self.combo_category.textActivated.connect(self.on_category_changed)
 
         #  Układ siatki dla 4 przycisków ---
         buttons_grid_widget = QtWidgets.QWidget()
@@ -201,8 +199,8 @@ class GameWindow(QtWidgets.QMainWindow):
 
         # Ustawienie elementów paska nawigacji
         navigation_bar_layout.addWidget(self.button_next_word)
-        navigation_bar_layout.addWidget(combo_level)
-        navigation_bar_layout.addWidget(combo_category)
+        navigation_bar_layout.addWidget(self.combo_level)
+        navigation_bar_layout.addWidget(self.combo_category)
 
         # Wrzucamy siatkę z 4 przyciskami zamiast starego labela
         navigation_bar_layout.addWidget(buttons_grid_widget)
@@ -276,17 +274,36 @@ class GameWindow(QtWidgets.QMainWindow):
         elif self._level == "Trudny":
             self.main_content.change_image('Assets/klasa_trudny.png')
 
+        # --- FIX: Synchronizacja wizualna kontrolek QComboBox z wczytanym stanem ---
+        self.combo_level.setCurrentText(self._level)
+        self.combo_category.setCurrentText(self._category)
+
         QtWidgets.QMessageBox.information(
             self, "Wczytano", "Gra została pomyślnie przywrócona!"
         )
+
     @QtCore.Slot()
     def on_rules_clicked(self) -> None:
-        #Slot wyświetlający okienko z zasadami gry.
+        # Slot wyświetlający okienko z zasadami gry.
+        rules_text = (
+            "<h3><b>Zasady gry Wisielec</b></h3>"
+            "<p>Twoim zadaniem jest odgadnięcie ukrytego hasła, zanim kat wykona wyrok!</p>"
+            "<ul>"
+            "<li><b>Wybór kategorii i poziomu:</b> Przed rozpoczęciem gry możesz wybrać poziom trudności oraz kategorię haseł za pomocą menu na dolnym pasku.</li>"
+            "<li><b>Typowanie liter:</b> Naciśnij literę na klawiaturze. Wybrany znak pojawi się na ekranie jako podgląd.</li>"
+            "<li><b>Zatwierdzanie ruchu:</b> Naciśnij klawisz <b>ENTER</b>, aby zatwierdzić literę i sprawdzić, czy znajduje się w haśle.</li>"
+            "<li><b>Limit błędów:</b> Możesz pomylić się maksymalnie <b>6 razy</b>. Każda błędna litera dorysuje kolejny element szubienicy.</li>"
+            "<li><b>Zapis i Odczyt stanu:</b> W każdej chwili możesz zapisać grę. Pamiętaj jednak, że system anty-cheat usunie Twój zapis w momencie wygranej lub przegranej!</li>"
+            "</ul>"
+            "<p><i>Powodzenia! Śledź swoje postępy i passę zwycięstw w zakładce 'Statystyki'.</i></p>"
+        )
+
         QtWidgets.QMessageBox.information(
             self,
             "Zasady gry",
-            "Zasady gry Wisielec:"
+            rules_text
         )
+
 
     @QtCore.Slot()
     def on_stats_clicked(self) -> None:
@@ -298,12 +315,14 @@ class GameWindow(QtWidgets.QMainWindow):
 
 
 
-
     @QtCore.Slot()
     def on_level_changed(self, selected_text: str) -> None:
         # Wymuszenie update GUI, po zmianie poziomu
 
         self._level = selected_text
+        self.current_guess = None
+        self.main_content.set_pending_guess(None)
+
 
         if selected_text == "Łatwy" :
             self.main_content.change_image('Assets/klasa_latwy.png')
@@ -319,6 +338,8 @@ class GameWindow(QtWidgets.QMainWindow):
         # Wymuszenie update GUI, po zmianie kategorii
 
         self._category = selected_text
+        self.current_guess = None
+        self.main_content.set_pending_guess(None)
         self.button_next_word_click()
 
     @QtCore.Slot()
