@@ -1,7 +1,107 @@
 import sys
 from PySide6 import QtCore, QtWidgets
+from Responsive_Widget import ResponsiveBgFrame
 
 from data_manager import DataManager
+from stats_manager import StatsManager
+from save_manager import SaveManager
+
+
+class StatsDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Twoje Osiągnięcia i Historia")
+        self.resize(450, 450)
+
+        self._stats_manager = StatsManager()
+
+        # Główny układ pionowy okna
+        layout = QtWidgets.QVBoxLayout(self)
+
+        # 1. SEKCJA: Tabela statystyk ogólnych
+        layout.addWidget(QtWidgets.QLabel("<b>Ogólne statystyki:</b>"))
+        self.table = QtWidgets.QTableWidget()
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Rozegrane gry", "Max Seria", "Skuteczność"])
+        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setFixedHeight(80)
+        layout.addWidget(self.table)
+
+        # Odstęp między sekcjami
+        layout.addSpacing(15)
+
+        # 2. SEKCJA: Lista wygranych haseł
+        layout.addWidget(QtWidgets.QLabel("<b>Historia odgadniętych haseł:</b>"))
+        self.words_list = QtWidgets.QListWidget()
+        layout.addWidget(self.words_list)
+
+        # 3. SEKCJA: Dolne przyciski akcji (układ poziomy)
+        buttons_layout = QtWidgets.QHBoxLayout()
+
+        # Przycisk resetowania
+        self.btn_reset = QtWidgets.QPushButton("Resetuj statystyki")
+        self.btn_reset.setStyleSheet("color: #c0392b; font-weight: bold;")  # Czerwony akcent ostrzegawczy
+        self.btn_reset.clicked.connect(self.on_reset_clicked)
+        buttons_layout.addWidget(self.btn_reset)
+
+        # Przycisk zamknięcia
+        btn_close = QtWidgets.QPushButton("Zamknij raport")
+        btn_close.clicked.connect(self.accept)
+        buttons_layout.addWidget(btn_close)
+
+        # Dodajemy układ przycisków do głównego layoutu okna
+        layout.addLayout(buttons_layout)
+
+        # Załadowanie kompletnych danych
+        self.load_data()
+
+    def load_data(self):
+        p_stats = self._stats_manager.get_player_stats("Local player")
+
+        if p_stats:
+            self.table.setRowCount(1)
+            self.table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(p_stats.get("games_played", 0))))
+            self.table.setItem(0, 1, QtWidgets.QTableWidgetItem(str(p_stats.get("max_win_streak", 0))))
+            self.table.setItem(0, 2, QtWidgets.QTableWidgetItem(f"{p_stats.get('accuracy_percentage', 0.0)}%"))
+
+            history_words = p_stats.get("won_words_history", [])
+
+            self.words_list.clear()
+            if history_words:
+                for word in history_words:
+                    self.words_list.addItem(f"  {word}")
+            else:
+                self.words_list.addItem("Brak wygranych haseł na tym profilu. Czas coś wygrać!")
+        else:
+            self.table.setRowCount(1)
+            self.table.setItem(0, 0, QtWidgets.QTableWidgetItem("0"))
+            self.table.setItem(0, 1, QtWidgets.QTableWidgetItem("0"))
+            self.table.setItem(0, 2, QtWidgets.QTableWidgetItem("0.0%"))
+            self.words_list.clear()
+            self.words_list.addItem("Brak zapisanych gier. Rozegraj pierwszą partię!")
+
+    @QtCore.Slot()
+    def on_reset_clicked(self) -> None:
+        """Slot obsługujący bezpieczne czyszczenie statystyk z potwierdzeniem."""
+        # Wyświetlamy okienko pytające z przyciskami Tak/Nie
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Potwierdzenie resetu",
+            "Czy na pewno chcesz bezpowrotnie usunąć wszystkie statystyki i historię haseł?",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No  # Domyślnie zaznaczony przycisk "Nie"
+        )
+
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+            # Czyszczenie pliku stats.json przez manager
+            self._stats_manager.reset_all_stats()
+            # Ponowne załadowanie widoku (pokaże zera i komunikat o braku gier)
+            self.load_data()
+
+            QtWidgets.QMessageBox.information(
+                self, "Zresetowano", "Statystyki zostały pomyślnie wyczyszczone."
+            )
 from Responsive_Widget import ResponsiveBgFrame
 
 class GameWindow(QtWidgets.QMainWindow):
@@ -9,6 +109,8 @@ class GameWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym")
         self._data_manager = DataManager()
+        self._stats_manager = StatsManager()
+        self._save_manager = SaveManager()
 
         # Ustalenie layout głównego całego okna
         master_layout = QtWidgets.QVBoxLayout()
@@ -39,9 +141,33 @@ class GameWindow(QtWidgets.QMainWindow):
         combo_category.setMaxVisibleItems(3)
         combo_category.textActivated.connect(self.on_category_changed)
 
-        # Tymczasowe wyświetlanie poziom i kategorii -- do usunięcia
-        self.label = QtWidgets.QLabel(f"Current Selection: {self._level} {self._category}")
-        self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+
+        #  Układ siatki dla 4 przycisków ---
+        buttons_grid_widget = QtWidgets.QWidget()
+        buttons_grid = QtWidgets.QGridLayout(buttons_grid_widget)
+        buttons_grid.setContentsMargins(0, 0, 0, 0)
+        buttons_grid.setSpacing(5)  # Odstępy między przyciskami
+
+        # Tworzenie przycisków
+        self.button_save_game = QtWidgets.QPushButton("Zapis stanu gry")
+        self.button_load_game = QtWidgets.QPushButton("Odczyt stanu gry")
+        self.button_rules = QtWidgets.QPushButton("Zasady gry")
+        self.button_stats = QtWidgets.QPushButton("Statystyki")
+
+        # Rozmieszczenie w siatce: addWidget(widget, wiersz, kolumna)
+        # Kolumna 1
+        buttons_grid.addWidget(self.button_save_game, 0, 0)
+        buttons_grid.addWidget(self.button_load_game, 1, 0)
+        # Kolumna 2
+        buttons_grid.addWidget(self.button_rules, 0, 1)
+        buttons_grid.addWidget(self.button_stats, 1, 1)
+
+        # Podpięcie sygnałów pod  metody
+        self.button_save_game.clicked.connect(self.on_save_game_clicked)
+        self.button_load_game.clicked.connect(self.on_load_game_clicked)
+        self.button_rules.clicked.connect(self.on_rules_clicked)
+        self.button_stats.clicked.connect(self.on_stats_clicked)
 
         self.button_next_word = QtWidgets.QPushButton("Losuj kolejne hasło")
 
@@ -71,11 +197,13 @@ class GameWindow(QtWidgets.QMainWindow):
         self.text.setFont(_font)
         '''
 
-        # Ustawienie elementów paska bocznego
+        # Ustawienie elementów paska nawigacji
         navigation_bar_layout.addWidget(self.button_next_word)
         navigation_bar_layout.addWidget(combo_level)
         navigation_bar_layout.addWidget(combo_category)
-        navigation_bar_layout.addWidget(self.label)
+
+        # Wrzucamy siatkę z 4 przyciskami zamiast starego labela
+        navigation_bar_layout.addWidget(buttons_grid_widget)
         self.button_next_word.clicked.connect(self.button_next_word_click)
 
         # Ustawianie ułożenia całego okna gry
@@ -90,9 +218,77 @@ class GameWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(container)
 
     @QtCore.Slot()
+    def on_save_game_clicked(self) -> None:
+        #Slot obsługujący zapis aktualnego stanu rozgrywki.
+        # Ponieważ guessed_letters to Pythonowy `set` (zbiór), musimy go
+        # zmienić na listę, bo JSON nie potrafi zapisać zbiorów bezpośrednio.
+        state = {
+            "level": self._level,
+            "category": self._category,
+            "current_word": self.current_word,
+            "wrong_guesses_counter": self.wrong_guesses_counter,
+            "guessed_letters": list(self.guessed_letters)
+        }
+
+        self._save_manager.save_state(state)
+
+        QtWidgets.QMessageBox.information(
+            self, "Zapisano", "Aktualny stan gry został pomyślnie zapisany!"
+        )
+
+    @QtCore.Slot()
+    def on_load_game_clicked(self) -> None:
+        #Slot obsługujący wczytanie zapisanego stanu rozgrywki.
+        state = self._save_manager.load_state()
+
+        if state is None:
+            QtWidgets.QMessageBox.warning(
+                self, "Błąd", "Nie znaleziono żadnego zapisanego stanu gry!"
+            )
+            return
+
+        # Przywracanie zmiennych stanu gry z wczytanego słownika
+        self._level = state["level"]
+        self._category = state["category"]
+        self.current_word = state["current_word"]
+        self.wrong_guesses_counter = state["wrong_guesses_counter"]
+
+        # Konwertujemy listę z JSONa z powrotem na set()
+        self.guessed_letters = set(state["guessed_letters"])
+
+        # Wymuszenie aktualizacji interfejsu (GUI), aby pokazać wczytany stan
+        self.update_word_display()
+        self.update_counter_display()
+
+
+        QtWidgets.QMessageBox.information(
+            self, "Wczytano", "Gra została pomyślnie przywrócona!"
+        )
+
+    @QtCore.Slot()
+    def on_rules_clicked(self) -> None:
+        #Slot wyświetlający okienko z zasadami gry.
+        QtWidgets.QMessageBox.information(
+            self,
+            "Zasady gry",
+            "Zasady gry Wisielec:"
+        )
+
+    @QtCore.Slot()
+    def on_stats_clicked(self) -> None:
+        # Tworzymy instancję naszego nowego okna dialogowego
+        dialog = StatsDialog(self)
+        # .exec() otwiera okno jako "modalne" (blokuje okno główne, dopóki nie zamkniesz statystyk)
+        dialog.exec()
+
+
+
+
+
+    @QtCore.Slot()
     def on_level_changed(self, selected_text: str) -> None:
         # Wymuszenie update GUI, po zmianie poziomu
-        self.label.setText(f"Current Selection: {selected_text} {self._category}")
+
         self._level = selected_text
 
         if selected_text == "Łatwy" :
@@ -107,7 +303,7 @@ class GameWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def on_category_changed(self, selected_text: str) -> None:
         # Wymuszenie update GUI, po zmianie kategorii
-        self.label.setText(f"Current Selection: {self._level} {selected_text}")
+
         self._category = selected_text
         self.button_next_word_click()
 
@@ -197,7 +393,25 @@ class GameWindow(QtWidgets.QMainWindow):
                 self.end_game(won=False)
 
     def end_game(self, won: bool):
-        """Handles win/loss popups."""
+        # Zabezpieczenie antycheaterkie zwiazane z abusowaniem zapisywania stanu gry
+        self._save_manager.delete_save()
+
+        """Obsługuje zapis statystyk do pliku JSON oraz wyświetla pop-up końca gry."""
+        total_letters = len(self.guessed_letters)
+        correct_letters = total_letters - self.wrong_guesses_counter
+
+        # Wymuszamy zapis na dokładnie ten sam klucz, którego szuka okienko dialogowe
+        self._stats_manager.save_game_stats(
+            level=self._level,
+            category=self._category,
+            result=won,
+            total_letters_typed=total_letters,
+            correct_letters_typed=correct_letters,
+            word_text=self.current_word,
+            player_name="Local player"  # <--- UPEWNIJ SIĘ, ŻE TO TU JEST
+        )
+
+        # Wyświetlenie okienka z informacją o wyniku
         msg = QtWidgets.QMessageBox(self)
         if won:
             msg.setWindowTitle("Gratulacje!")
@@ -206,6 +420,8 @@ class GameWindow(QtWidgets.QMainWindow):
             msg.setWindowTitle("Koniec Gry")
             msg.setText(f"Przegrałeś. Prawidłowe hasło: {self.current_word}")
         msg.exec()
+
+        # Reset planszy i wylosowanie nowego słowa
         self.button_next_word_click()
 
     def get_word(self) -> tuple[str,int]:
