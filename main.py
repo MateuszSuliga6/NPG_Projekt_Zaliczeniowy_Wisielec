@@ -114,12 +114,12 @@ class GameWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def button_next_word_click(self) -> None:
         self.current_word = self.get_word()[0].upper()
-
-        # resetting single game stats
         self.guessed_letters.clear()
         self.wrong_guesses_counter = 0
 
-        # Display the initial masked word
+        # Send the newly cleared empty set to wipe the sprite list clean from the previous match
+        self.main_content.set_guessed_letters(self.guessed_letters)
+
         self.update_word_display()
         self.update_counter_display()
 
@@ -174,8 +174,11 @@ class GameWindow(QtWidgets.QMainWindow):
 
     def process_confirmed_guess(self, guess: str):
         """Evaluates the validated guess against the current hidden word rules."""
-        # Process the new guess into the permanent set
         self.guessed_letters.add(guess)
+
+        # PUSH THE UPDATED SET TO THE VIEWPORT GRAPHICS LAYER!
+        self.main_content.set_guessed_letters(self.guessed_letters)
+
 
         if guess in self.current_word:
             # Correct guess! Update the interface text

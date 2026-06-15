@@ -62,7 +62,7 @@ class ResponsiveBgFrame(QFrame):
         self.current_word_display = None
         self.pending_guess = None
         self.guessed_letters_list = []
-        
+
         alphabet_paths = {
             "A": "Assets/Alfabet/A.png", "Ą": "Assets/Alfabet/A_.png",
             "B": "Assets/Alfabet/B.png", "C": "Assets/Alfabet/C.png",
@@ -110,6 +110,12 @@ class ResponsiveBgFrame(QFrame):
     def set_pending_guess(self, letter: str or None):
         """Receives the staged letter waiting for Enter confirmation and redraws."""
         self.pending_guess = letter
+        self.update()
+
+    def set_guessed_letters(self, letters: set):
+        """Receives the collection of already guessed letters and schedules a repaint."""
+        # Convert to a sorted list so the assets don't bounce around randomly on screen
+        self.guessed_letters_list = sorted(list(letters))
         self.update()
 
     def paintEvent(self, event):
@@ -244,4 +250,43 @@ class ResponsiveBgFrame(QFrame):
 
                 # Optional: If you want a decorative border or small textual prompt next to it,
                 # you can overlay painter details here using standard configuration settings.
+        # --- DRAW ALREADY USED LETTERS ASSETS (Top-Left Alignment) ---
+        if hasattr(self, 'guessed_letters_list') and self.guessed_letters_list:
+            # 1. Size the used letter icons dynamically (e.g., 2.5% of your active layout width)
+            used_letter_size = max(12, int(self.width() * 0.025))
+            used_spacing = int(used_letter_size * 0.15)
+
+            # Starting coordinates for our "Used Letters" deck row
+            start_x_used = int(self.width() * 0.25)
+            start_y_used = int(self.height() * 0.15)
+
+            # Optional: Draw a small text title above the used letter row
+            painter.save()
+            font = painter.font()
+            font.setFamily("Arial")
+            font.setPointSize(max(10, int(self.width() * 0.015)))
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor("#7f8c8d"))  # Muted grey slate color
+            painter.restore()
+
+            # 2. Iterate and paint each unique used asset emblem side-by-side
+            for i, letter in enumerate(self.guessed_letters_list):
+                used_sprite = self.alphabet_sprites.get(letter)
+
+                if used_sprite and not used_sprite.isNull():
+                    scaled_used = used_sprite.scaled(
+                        used_letter_size,
+                        used_letter_size,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation
+                    )
+
+                    # Calculate horizontal shifting per letter item
+                    current_x_used = start_x_used + (i * (used_letter_size + used_spacing))
+
+                    # Optional wrap checking: If your row goes too far right,
+                    # you can add basic line wrapping logic here using floor division.
+
+                    painter.drawPixmap(current_x_used, start_y_used, scaled_used)
         painter.end()
