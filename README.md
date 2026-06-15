@@ -22,6 +22,6 @@ Rozgrywka polega na odgadywaniu ukrytego hasła poprzez stopniowe wskazywanie po
 
 
 # Potrzebne biblioteki
-PySide6\
-csv\
-random
+* PySide6
+* csv
+* random
