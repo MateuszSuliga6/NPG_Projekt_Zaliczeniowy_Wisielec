@@ -50,14 +50,17 @@ class GameWindow(QtWidgets.QMainWindow):
         self.guessed_letters = set()
         self.wrong_guesses_counter = 0
         self.max_wrong_guesses = 6
+        self.current_guess = None
 
         # Display the initial masked word
 
-        self.text = QtWidgets.QLabel(self.generate_masked_word(), alignment = QtCore.Qt.AlignmentFlag.AlignCenter)
+        #self.text = QtWidgets.QLabel(self.generate_masked_word(), alignment = QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Ustawienie głównego okna rozgrywki
         self.main_content = ResponsiveBgFrame("Assets/klasa_latwy.png")
         main_layout = QtWidgets.QVBoxLayout(self.main_content)
+        self.main_content.set_word_display(self.generate_masked_word())
+        '''
         main_layout.addWidget(self.text)
 
         self.update_counter_display()
@@ -66,6 +69,7 @@ class GameWindow(QtWidgets.QMainWindow):
         _font.setPointSize(24)
         _font.setBold(True)
         self.text.setFont(_font)
+        '''
 
         # Ustawienie elementów paska bocznego
         navigation_bar_layout.addWidget(self.button_next_word)
@@ -74,17 +78,11 @@ class GameWindow(QtWidgets.QMainWindow):
         navigation_bar_layout.addWidget(self.label)
         self.button_next_word.clicked.connect(self.button_next_word_click)
 
-
-
-
         # Ustawianie ułożenia całego okna gry
         master_layout.addWidget(self.main_content)
         master_layout.addWidget(navigation_bar)
-        master_layout.addStretch()  # <--- UNCOMMENT THIS LINE
+        master_layout.addStretch()
 
-        # --- Line 81: Let the layout know how the labels inside handle spacing ---
-        # Right now, your QVBoxLayout(self.main_content) puts self.text in the center.
-        # Let's align the text properly so it doesn't try to stretch the parent layout bounds.
         main_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         container = QtWidgets.QWidget()
@@ -126,9 +124,9 @@ class GameWindow(QtWidgets.QMainWindow):
         self.update_counter_display()
 
     def update_word_display(self):
-        """Updates your PySide6 text box/label component."""
-        # Adjust 'self.text' to whatever your display widget variable name is
-        self.text.setText(self.generate_masked_word())
+        """Redirects game engine calculations into the background widget painter."""
+        # Pushes your generated underscores and guessed letters directly to the sprite loop
+        self.main_content.set_word_display(self.generate_masked_word())
 
     def generate_masked_word(self) -> str:
         """Converts the current word into a string of underscores and spaces."""
@@ -140,35 +138,56 @@ class GameWindow(QtWidgets.QMainWindow):
                 display_letters.append(letter)  # Keep spaces/hyphens visible
             else:
                 display_letters.append("_")
-            display_letters.append(" ")
         return " ".join(display_letters)
 
     def update_counter_display(self):
         """Updates a label showing how many mistakes have been made."""
         # Assuming you have a label named 'self.counter_label'
         # self.counter_label.setText(f"Mistakes: {self.wrong_guesses_counter} / {self.max_wrong_guesses}")
-        print(f"Mistakes: {self.wrong_guesses_counter}")  # Fallback placeholder
         self.main_content.set_error_count(self.wrong_guesses_counter)
 
-
     def keyPressEvent(self, event):
-        """PySide6 built-in event handler that intercepts keyboard clicks."""
-        # Get the string representation of the pressed key
+        """Intercepts keyboard clicks.
+
+        Stages a letter first, then processes it on Enter/Return.
+        """
+        # 1. Check if the user pressed Enter or Return to CONFIRM a guess
+        if event.key() in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter):
+            if self.current_guess is not None:
+                # Process the confirmed guess
+                guess = self.current_guess
+                self.current_guess = None  # Clear it immediately so it can't be re-entered
+
+                print(f"Confirmed guess: {guess}")  # Debug feedback
+                self.process_confirmed_guess(guess)
+            return
+
+        # 2. Otherwise, handle standard text character input
         key_text = event.text()
 
-        # Ensure it's a valid letter character and not a modifier key like Shift/Ctrl
+        # Ensure it's a valid letter character
         if not key_text or not key_text.isalpha():
             super().keyPressEvent(event)
             return
 
-        # Modern UTF-8 safe conversion to uppercase
-        guess = key_text.upper()
+        # Convert to uppercase
+        potential_guess = key_text.upper()
 
-        # Ignore if the user already guessed this letter
-        if guess in self.guessed_letters:
+        # Ignore if the user already successfully guessed this letter in the word
+        if potential_guess in self.guessed_letters:
+            print(f"You already guessed {potential_guess}!")
             return
 
-        # Process the new guess
+        # Stage the letter and wait for the Enter press
+        self.current_guess = potential_guess
+        print(f"Staged letter: {self.current_guess}. Press Enter to confirm.")
+
+        # Optional: If you want to show the pending letter to the user in the UI,
+        # you could update a label here, e.g., self.status_label.setText(f"Pending: {self.current_guess}")
+
+    def process_confirmed_guess(self, guess: str):
+        """Evaluates the validated guess against the current hidden word rules."""
+        # Process the new guess into the permanent set
         self.guessed_letters.add(guess)
 
         if guess in self.current_word:
