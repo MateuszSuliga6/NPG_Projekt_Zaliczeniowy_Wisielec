@@ -166,7 +166,7 @@ class ResponsiveBgFrame(QFrame):
             
             # Pozycjonowanie tekstu obok monety
             text_x = 15 + coin_size + 10
-            text_y = 15 + (coin_size // 2) + (font.pointSize() // 2)
+            text_y = 10 + (coin_size // 2) + (font.pointSize() // 2)
             painter.drawText(text_x, text_y, str(self.current_coins))
             painter.restore()
 
