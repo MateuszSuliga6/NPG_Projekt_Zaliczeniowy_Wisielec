@@ -22,7 +22,7 @@ Rozgrywka polega na odgadywaniu ukrytego hasła poprzez stopniowe wskazywanie po
 
 
 # Wymagania Sprzętowe
-Gra jest dedykowana na komputery z systemem operacyjnym Windows
+Gra jest dedykowana na komputery z systemem operacyjnym Windows.
 ## Potrzebne biblioteki
 * PySide6
 * CSV
