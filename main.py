@@ -1,10 +1,12 @@
 import sys
 from PySide6 import QtCore, QtWidgets
+from PySide6.QtGui import QIcon
 from Responsive_Widget import ResponsiveBgFrame
-
 from data_manager import DataManager
 from stats_manager import StatsManager
 from save_manager import SaveManager
+import os
+import ctypes
 
 
 class StatsDialog(QtWidgets.QDialog):
@@ -102,7 +104,6 @@ class StatsDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.information(
                 self, "Zresetowano", "Statystyki zostały pomyślnie wyczyszczone."
             )
-from Responsive_Widget import ResponsiveBgFrame
 
 class GameWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
@@ -115,6 +116,7 @@ class GameWindow(QtWidgets.QMainWindow):
         # Ustalenie layout głównego całego okna
         master_layout = QtWidgets.QVBoxLayout()
         master_layout.setContentsMargins(0, 0, 0, 0)
+        self.setWindowIcon(QIcon("Assets/Logo.png"))
         master_layout.setSpacing(0)
 
         # Ustalenie istnienia paska dolnego i jego formatowania
@@ -497,6 +499,10 @@ class GameWindow(QtWidgets.QMainWindow):
         self.setFixedHeight(total_content_height)
 
 if __name__ == "__main__":
+    if os.name == 'nt':  # Checks if the operating system is Windows
+        myappid = 'mycompany.mygame.hangman.v1'  # A completely custom unique string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    # --------------------------------
     app = QtWidgets.QApplication(sys.argv)
     window = GameWindow()
     window.show()
