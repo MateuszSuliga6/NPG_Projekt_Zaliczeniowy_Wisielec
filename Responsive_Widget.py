@@ -67,10 +67,15 @@ class ResponsiveBgFrame(QFrame):
 
         if not current_stage_pixmap.isNull():
             # Define how large the hangman box should be (e.g., 150x150 pixels)
-            hangman_size = 16
+            dynamic_width = int(self.width() * 0.10)
+
+            # 2. Enforce a minimum size so it doesn't turn into a tiny pixel on small screens
+            if dynamic_width < 50:
+                dynamic_width = 50
 
             scaled_hangman = current_stage_pixmap.scaled(
-                hangman_size, hangman_size,
+                dynamic_width,
+                dynamic_width,
                 Qt.AspectRatioMode.IgnoreAspectRatio,
                 Qt.TransformationMode.SmoothTransformation
             )
@@ -78,8 +83,8 @@ class ResponsiveBgFrame(QFrame):
             # Calculate coordinates for TOP-RIGHT corner
             # x = total width minus the width of the scaled hangman image minus padding
             # y = padding from the top edge
-            x_pos_right = self.width() - scaled_hangman.width() - 15
-            y_pos_top = 15
+            x_pos_right = self.width() - scaled_hangman.width() - 20
+            y_pos_top = 50
 
             painter.drawPixmap(x_pos_right, y_pos_top, scaled_hangman)
 

@@ -52,8 +52,15 @@ class GameWindow(QtWidgets.QMainWindow):
         self.max_wrong_guesses = 6
 
         # Display the initial masked word
-        self.update_counter_display()
+
         self.text = QtWidgets.QLabel(self.generate_masked_word(), alignment = QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        # Ustawienie głównego okna rozgrywki
+        self.main_content = ResponsiveBgFrame("Assets/klasa_latwy.png")
+        main_layout = QtWidgets.QVBoxLayout(self.main_content)
+        main_layout.addWidget(self.text)
+
+        self.update_counter_display()
 
         _font = self.text.font()
         _font.setPointSize(24)
@@ -67,10 +74,7 @@ class GameWindow(QtWidgets.QMainWindow):
         navigation_bar_layout.addWidget(self.label)
         self.button_next_word.clicked.connect(self.button_next_word_click)
 
-        # Ustawienie głównego okna rozgrywki
-        self.main_content = ResponsiveBgFrame("Assets/klasa_latwy.png")
-        main_layout = QtWidgets.QVBoxLayout(self.main_content)
-        main_layout.addWidget(self.text)
+
 
 
         # Ustawianie ułożenia całego okna gry
@@ -144,6 +148,7 @@ class GameWindow(QtWidgets.QMainWindow):
         # Assuming you have a label named 'self.counter_label'
         # self.counter_label.setText(f"Mistakes: {self.wrong_guesses_counter} / {self.max_wrong_guesses}")
         print(f"Mistakes: {self.wrong_guesses_counter}")  # Fallback placeholder
+        self.main_content.set_error_count(self.wrong_guesses_counter)
 
 
     def keyPressEvent(self, event):
