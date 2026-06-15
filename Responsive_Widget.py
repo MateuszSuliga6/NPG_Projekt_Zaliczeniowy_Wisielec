@@ -59,8 +59,10 @@ class ResponsiveBgFrame(QFrame):
         for i in range(1, 8):
             self.hangman_stages.append(QPixmap(f"Assets/Szubienica/Szubienica{i}.png"))
 
-        self.current_word_display = ""
-
+        self.current_word_display = None
+        self.pending_guess = None
+        self.guessed_letters_list = []
+        
         alphabet_paths = {
             "A": "Assets/Alfabet/A.png", "Ą": "Assets/Alfabet/A_.png",
             "B": "Assets/Alfabet/B.png", "C": "Assets/Alfabet/C.png",
@@ -105,6 +107,11 @@ class ResponsiveBgFrame(QFrame):
         self.current_word_display = masked_word
         self.update()
 
+    def set_pending_guess(self, letter: str or None):
+        """Receives the staged letter waiting for Enter confirmation and redraws."""
+        self.pending_guess = letter
+        self.update()
+
     def paintEvent(self, event):
         if self.base_pixmap.isNull():
             return
@@ -141,15 +148,15 @@ class ResponsiveBgFrame(QFrame):
         current_frame_pixmap = self.sprite_movie.currentPixmap()
         if not current_frame_pixmap.isNull():
             dynamic_width = max(50, int(self.width() * 0.25))
-            scaled_sprite = current_frame_pixmap.scaled(
+            scaled_sprite_player = current_frame_pixmap.scaled(
                 dynamic_width,
                 dynamic_width,
                 Qt.AspectRatioMode.IgnoreAspectRatio,
                 Qt.TransformationMode.SmoothTransformation
             )
-            x_pos_left = self.width() - scaled_sprite.width()
-            y_pos_bottom = self.height() - scaled_sprite.height()
-            painter.drawPixmap(x_pos_left, y_pos_bottom, scaled_sprite)
+            x_pos_left = self.width() - scaled_sprite_player.width()
+            y_pos_bottom = self.height() - scaled_sprite_player.height()
+            painter.drawPixmap(x_pos_left, y_pos_bottom, scaled_sprite_player)
 
         # --- MULTI-LINE WORD SPRITE RENDERING ---
         if self.current_word_display:
@@ -209,4 +216,32 @@ class ResponsiveBgFrame(QFrame):
                             current_x = start_x + (col_idx * (letter_size + standard_spacing))
                             painter.drawPixmap(current_x, current_y, scaled_letter)
 
+        # --- DRAW PENDING GUESS IMAGE VERIFICATION ---
+        # Checks if there is currently a letter staged waiting for confirmation
+        if hasattr(self, 'pending_guess') and self.pending_guess:
+            # Look up the custom PNG asset matching the staged letter character
+            staged_sprite = self.alphabet_sprites.get(self.pending_guess)
+
+            if staged_sprite and not staged_sprite.isNull():
+                # 1. Size the validation asset dynamically (e.g., 6% of your active layout width)
+                indicator_size = max(24, int(self.width() * 0.04))
+
+                # 2. Rescale the letter asset smoothly
+                scaled_indicator = staged_sprite.scaled(
+                    indicator_size,
+                    indicator_size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+
+                # 3. COORDINATE LAYOUT RULES (Position it manually here)
+                # Left placement padding offset
+                x_pos = self.width() - scaled_sprite_player.width() + int(self.width() * 0.06)
+                y_pos = self.height() - scaled_sprite_player.height() + int(self.height() * 0.055)
+
+                # 4. Paint the custom graphics frame
+                painter.drawPixmap(x_pos, y_pos, scaled_indicator)
+
+                # Optional: If you want a decorative border or small textual prompt next to it,
+                # you can overlay painter details here using standard configuration settings.
         painter.end()

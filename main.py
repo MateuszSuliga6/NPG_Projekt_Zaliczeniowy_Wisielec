@@ -147,43 +147,30 @@ class GameWindow(QtWidgets.QMainWindow):
         self.main_content.set_error_count(self.wrong_guesses_counter)
 
     def keyPressEvent(self, event):
-        """Intercepts keyboard clicks.
-
-        Stages a letter first, then processes it on Enter/Return.
-        """
-        # 1. Check if the user pressed Enter or Return to CONFIRM a guess
         if event.key() in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter):
             if self.current_guess is not None:
-                # Process the confirmed guess
                 guess = self.current_guess
-                self.current_guess = None  # Clear it immediately so it can't be re-entered
+                self.current_guess = None
 
-                print(f"Confirmed guess: {guess}")  # Debug feedback
+                # Push None to clear the indicator on screen after confirming
+                self.main_content.set_pending_guess(None)
+
                 self.process_confirmed_guess(guess)
             return
 
-        # 2. Otherwise, handle standard text character input
         key_text = event.text()
-
-        # Ensure it's a valid letter character
         if not key_text or not key_text.isalpha():
             super().keyPressEvent(event)
             return
 
-        # Convert to uppercase
         potential_guess = key_text.upper()
-
-        # Ignore if the user already successfully guessed this letter in the word
         if potential_guess in self.guessed_letters:
-            print(f"You already guessed {potential_guess}!")
             return
 
-        # Stage the letter and wait for the Enter press
         self.current_guess = potential_guess
-        print(f"Staged letter: {self.current_guess}. Press Enter to confirm.")
 
-        # Optional: If you want to show the pending letter to the user in the UI,
-        # you could update a label here, e.g., self.status_label.setText(f"Pending: {self.current_guess}")
+        # Push the staged letter to the frame to trigger the painter update!
+        self.main_content.set_pending_guess(self.current_guess)
 
     def process_confirmed_guess(self, guess: str):
         """Evaluates the validated guess against the current hidden word rules."""
