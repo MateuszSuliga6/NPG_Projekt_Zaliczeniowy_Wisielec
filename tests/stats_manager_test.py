@@ -1,4 +1,3 @@
-# test_stats.py
 import unittest
 import os
 import json
@@ -52,6 +51,11 @@ class TestStatsManager(unittest.TestCase):
         self.assertEqual(player_data["correct_letters"], 6)
         self.assertEqual(player_data["current_win_streak"], 1)
         self.assertIn("KRAKÓW", player_data["won_words_history"])
+        
+        # --- NOWE: Sprawdzamy, czy inicjalizują się też monety i moce dla nowych graczy ---
+        self.assertIn("coins", player_data)
+        self.assertIn("extra_lives", player_data)
+        self.assertIn("hints", player_data)
 
     def test_win_streaks_and_word_history(self):
         """Test czy poprawnie liczy serię wygranych dla Local player i zapisuje historię słów."""
@@ -87,6 +91,34 @@ class TestStatsManager(unittest.TestCase):
         # Oczekiwana skuteczność: (15 / 20) * 100 = 75.0%
         self.assertIsNotNone(player_stats)
         self.assertEqual(player_stats["accuracy_percentage"], 75.0)
+
+    # --- NOWE: Osobny test testujący dynamikę monet i funkcjonowanie sklepu ---
+    def test_dynamic_coin_rewards_and_shop(self):
+        """Test nagradzania monetami zależnie od poziomu trudności i obsługi zakupów."""
+        # Wygrana na Łatwym (+5 monet)
+        self.manager.save_game_stats("Łatwy", "Kino", True, 5, 5, "TEST_EASY", "Mati")
+        # Wygrana na Średnim (+10 monet)
+        self.manager.save_game_stats("Średni", "Kino", True, 5, 5, "TEST_MED", "Mati")
+        # Wygrana na Trudnym (+15 monet)
+        self.manager.save_game_stats("Trudny", "Kino", True, 5, 5, "TEST_HARD", "Mati")
+        
+        stats = self.manager._read_json()
+        player_data = stats["players"]["Mati"]
+        
+        # Gracz powinien mieć: 5 + 10 + 15 = 30 monet
+        self.assertEqual(player_data["coins"], 30)
+        
+        # Testujemy udany zakup w sklepie (założenie: życie kosztuje 20)
+        success = self.manager.purchase_item("Mati", "extra_lives", 20)
+        self.assertTrue(success)
+        
+        stats_after_purchase = self.manager._read_json()
+        self.assertEqual(stats_after_purchase["players"]["Mati"]["coins"], 10)  # Reszta: 30 - 20 = 10
+        self.assertEqual(stats_after_purchase["players"]["Mati"]["extra_lives"], 1)  # Wskoczyło 1 życie
+        
+        # Testujemy próbę zakupu bez środków (założenie: życie kosztuje 20, my mamy 10)
+        success_fail = self.manager.purchase_item("Mati", "extra_lives", 20)
+        self.assertFalse(success_fail)
 
 
 if __name__ == '__main__':
