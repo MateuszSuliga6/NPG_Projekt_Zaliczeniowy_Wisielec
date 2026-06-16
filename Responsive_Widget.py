@@ -201,8 +201,8 @@ class ResponsiveBgFrame(QFrame):
                 Qt.AspectRatioMode.IgnoreAspectRatio,
                 Qt.TransformationMode.FastTransformation
             )
-            x_pos_right = self.width() - scaled_hangman.width() - int(self.width() * 0.05)
-            y_pos_top = int(self.height() * 0.11) - 2
+            x_pos_right = self.width() - scaled_hangman.width() - int(self.width() * 0.05) - 50
+            y_pos_top = int(self.height() * 0.11) + 40
             painter.drawPixmap(x_pos_right, y_pos_top, scaled_hangman)
 
         # --- DRAW PLAYER GIF ANIMATION (Bottom Left) ---
