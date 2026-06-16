@@ -6,6 +6,7 @@ from Responsive_Widget import ResponsiveBgFrame
 from data_manager import DataManager
 from stats_manager import StatsManager
 from save_manager import SaveManager
+from audio_manager import AudioManager
 import os
 import ctypes
 
@@ -169,6 +170,12 @@ class GameWindow(QtWidgets.QMainWindow):
         self._data_manager = DataManager()
         self._stats_manager = StatsManager()
         self._save_manager = SaveManager()
+
+        self._audio = AudioManager()
+        self._audio.load_sound("correct", "correct.mp3")
+        self._audio.load_sound("error", "error.mp3")
+        self._audio.load_sound("win", "win.mp3")
+        self._audio.load_sound("lose", "lose.mp3")
         
         self.player_name = self.ask_for_player_name()
         self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym | Gracz: {self.player_name}")
@@ -551,12 +558,24 @@ class GameWindow(QtWidgets.QMainWindow):
 
         if guess in self.current_word:
             self.update_word_display()
+            
+            # --- DŹWIĘK: Dobra litera ---
+            self._audio.play("correct")
+            
             if "_" not in self.generate_masked_word():
+                self._audio.play("win") # --- DŹWIĘK: Wygrana ---
                 self.end_game(won=True)
         else:
             self.wrong_guesses_counter += 1
             self.update_counter_display()
             self.update_hud() 
+            
+            # --- DŹWIĘK: Zła litera ---
+            self._audio.play("error")
+
+            if self.wrong_guesses_counter >= self.max_wrong_guesses:
+                self._audio.play("lose") # --- DŹWIĘK: Przegrana ---
+                self.end_game(won=False) 
 
             if self.wrong_guesses_counter >= self.max_wrong_guesses:
                 self.end_game(won=False)
