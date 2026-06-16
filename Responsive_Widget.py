@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap, QPainter, QColor, QMovie
+from PySide6.QtGui import QPixmap, QPainter, QColor, QMovie, QPen
 from PySide6.QtWidgets import QFrame
 
 
@@ -147,27 +147,48 @@ class ResponsiveBgFrame(QFrame):
 
         # --- DRAW COIN HUD (Top Left) ---
         if not self.coin_pixmap.isNull():
+            painter.save()
+
+            # 1. Ustawienia retro czcionki
+            font = painter.font()
+            font.setFamily("Courier New")
+            font.setPointSize(max(16, int(self.width() * 0.025)))
+            font.setBold(True)
+            painter.setFont(font)
+
+            text = str(self.current_coins)
+            fm = painter.fontMetrics()
+            text_width = fm.horizontalAdvance(text) # Oblicza, ile pikseli zajmie napis
+            text_height = fm.height()
+
+            # 2. Obliczenia wymiarów ramki
             coin_size = max(24, int(self.width() * 0.04))
+            padding = 10
+            # Szerokość = margines + moneta + odstęp + tekst + margines
+            box_width = padding + coin_size + 10 + text_width + padding
+            box_height = padding + max(coin_size, text_height) + padding
+
+            # 3. Rysowanie retro ramki pod monetą
+            painter.setBrush(QColor(34, 34, 34, 240)) # Ciemnoszare, retro tło
+            painter.setPen(QPen(QColor(0, 0, 0), 3))  # Gruba czarna ramka obramowania
+            painter.drawRect(15, 15, box_width, box_height)
+
+            # 4. Rysowanie monety (Z wyłączonym rozmyciem: FastTransformation!)
             scaled_coin = self.coin_pixmap.scaled(
                 coin_size, coin_size,
                 Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation
             )
-            # Rysowanie samej monety
-            painter.drawPixmap(15, 15, scaled_coin)
-            
-            # Rysowanie tekstu ze stanem konta
-            painter.save()
-            font = painter.font()
-            font.setFamily("Arial")
-            font.setPointSize(max(14, int(self.width() * 0.025)))
-            font.setBold(True)
-            painter.setFont(font)
-            painter.setPen(QColor("#f1c40f"))  # Złoty kolor (zółty)
-            
-            # Pozycjonowanie tekstu obok monety
-            text_x = 15 + coin_size + 10
-            text_y = 10 + (coin_size // 2) + (font.pointSize() // 2)
-            painter.drawText(text_x, text_y, str(self.current_coins))
+            # Środkowanie monety w pionie względem ramki
+            coin_y = 15 + (box_height - coin_size) // 2
+            painter.drawPixmap(15 + padding, coin_y, scaled_coin)
+
+            # 5. Rysowanie złotego tekstu
+            text_x = 15 + padding + coin_size + 10
+            # Matematyczne wyśrodkowanie tekstu w pionie
+            text_y = 15 + (box_height + fm.ascent() - fm.descent()) // 2
+            painter.setPen(QColor("#f1c40f"))  # Złoty kolor czcionki
+            painter.drawText(text_x, text_y, text)
+
             painter.restore()
 
         # --- DRAW HANGMAN STAGE (Top Right) ---
