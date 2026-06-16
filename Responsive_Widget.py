@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap, QPainter, QColor, QMovie
+from PySide6.QtGui import QPixmap, QPainter, QColor, QMovie, QPen
 from PySide6.QtWidgets import QFrame
 
 
@@ -141,33 +141,54 @@ class ResponsiveBgFrame(QFrame):
             self.width(),
             self.height(),
             Qt.AspectRatioMode.IgnoreAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
+            Qt.TransformationMode.FastTransformation
         )
         painter.drawPixmap(0, 0, scaled_pixmap)
 
         # --- DRAW COIN HUD (Top Left) ---
         if not self.coin_pixmap.isNull():
-            coin_size = max(24, int(self.width() * 0.04))
-            scaled_coin = self.coin_pixmap.scaled(
-                coin_size, coin_size,
-                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-            )
-            # Rysowanie samej monety
-            painter.drawPixmap(15, 15, scaled_coin)
-            
-            # Rysowanie tekstu ze stanem konta
             painter.save()
+
+            # 1. Ustawienia retro czcionki
             font = painter.font()
-            font.setFamily("Arial")
-            font.setPointSize(max(14, int(self.width() * 0.025)))
+            font.setFamily("Courier New")
+            font.setPointSize(max(16, int(self.width() * 0.025)))
             font.setBold(True)
             painter.setFont(font)
-            painter.setPen(QColor("#f1c40f"))  # Złoty kolor (zółty)
-            
-            # Pozycjonowanie tekstu obok monety
-            text_x = 15 + coin_size + 10
-            text_y = 10 + (coin_size // 2) + (font.pointSize() // 2)
-            painter.drawText(text_x, text_y, str(self.current_coins))
+
+            text = str(self.current_coins)
+            fm = painter.fontMetrics()
+            text_width = fm.horizontalAdvance(text) # Oblicza, ile pikseli zajmie napis
+            text_height = fm.height()
+
+            # 2. Obliczenia wymiarów ramki
+            coin_size = max(24, int(self.width() * 0.04))
+            padding = 10
+            # Szerokość = margines + moneta + odstęp + tekst + margines
+            box_width = padding + coin_size + 10 + text_width + padding
+            box_height = padding + max(coin_size, text_height) + padding
+
+            # 3. Rysowanie retro ramki pod monetą
+            painter.setBrush(QColor(34, 34, 34, 240)) # Ciemnoszare, retro tło
+            painter.setPen(QPen(QColor(0, 0, 0), 3))  # Gruba czarna ramka obramowania
+            painter.drawRect(15, 15, box_width, box_height)
+
+            # 4. Rysowanie monety (Z wyłączonym rozmyciem: FastTransformation!)
+            scaled_coin = self.coin_pixmap.scaled(
+                coin_size, coin_size,
+                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation
+            )
+            # Środkowanie monety w pionie względem ramki
+            coin_y = 15 + (box_height - coin_size) // 2
+            painter.drawPixmap(15 + padding, coin_y, scaled_coin)
+
+            # 5. Rysowanie złotego tekstu
+            text_x = 15 + padding + coin_size + 10
+            # Matematyczne wyśrodkowanie tekstu w pionie
+            text_y = 15 + (box_height + fm.ascent() - fm.descent()) // 2
+            painter.setPen(QColor("#f1c40f"))  # Złoty kolor czcionki
+            painter.drawText(text_x, text_y, text)
+
             painter.restore()
 
         # --- DRAW HANGMAN STAGE (Top Right) ---
@@ -178,10 +199,10 @@ class ResponsiveBgFrame(QFrame):
                 dynamic_width,
                 dynamic_width,
                 Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
+                Qt.TransformationMode.FastTransformation
             )
-            x_pos_right = self.width() - scaled_hangman.width() - int(self.width() * 0.05)
-            y_pos_top = int(self.height() * 0.11) - 2
+            x_pos_right = self.width() - scaled_hangman.width() - int(self.width() * 0.05) - 50
+            y_pos_top = int(self.height() * 0.11) + 40
             painter.drawPixmap(x_pos_right, y_pos_top, scaled_hangman)
 
         # --- DRAW PLAYER GIF ANIMATION (Bottom Left) ---
@@ -192,7 +213,7 @@ class ResponsiveBgFrame(QFrame):
                 dynamic_width,
                 dynamic_width,
                 Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
+                Qt.TransformationMode.FastTransformation
             )
             x_pos_left = self.width() - scaled_sprite_player.width()
             y_pos_bottom = self.height() - scaled_sprite_player.height()
@@ -251,7 +272,7 @@ class ResponsiveBgFrame(QFrame):
                         if sprite and not sprite.isNull():
                             scaled_letter = sprite.scaled(
                                 letter_size, letter_size,
-                                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation
                             )
                             current_x = start_x + (col_idx * (letter_size + standard_spacing))
                             painter.drawPixmap(current_x, current_y, scaled_letter)
@@ -271,7 +292,7 @@ class ResponsiveBgFrame(QFrame):
                     indicator_size,
                     indicator_size,
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
+                    Qt.TransformationMode.FastTransformation
                 )
 
                 # 3. COORDINATE LAYOUT RULES (Position it manually here)
@@ -313,7 +334,7 @@ class ResponsiveBgFrame(QFrame):
                         used_letter_size,
                         used_letter_size,
                         Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation
+                        Qt.TransformationMode.FastTransformation
                     )
 
                     # Calculate horizontal shifting per letter item

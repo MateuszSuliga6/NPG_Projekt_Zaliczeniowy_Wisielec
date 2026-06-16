@@ -182,7 +182,68 @@ class GameWindow(QtWidgets.QMainWindow):
         # Ustalenie istnienia paska dolnego i jego formatowania
         navigation_bar = QtWidgets.QFrame()
         navigation_bar.setObjectName("Navigation_bar")
-        navigation_bar.setStyleSheet(" background-color: #2c3e50; min-width: 100px; max-height: 100px")
+        
+        # --- ZMIANA: Retro styl CSS dla całego dolnego paska i jego elementów ---
+        navigation_bar.setStyleSheet("""
+            QFrame#Navigation_bar {
+                background-color: #222222; 
+                border-top: 4px solid #000000;
+                min-width: 100px;
+                max-height: 120px;
+            }
+            
+            /* Globalny styl dla wszystkich przycisków i list */
+            QPushButton, QComboBox {
+                background-color: #5c5c5c;
+                color: #ffffff;
+                border-top: 3px solid #949494;
+                border-left: 3px solid #949494;
+                border-bottom: 3px solid #212121;
+                border-right: 3px solid #212121;
+                padding: 4px 10px; /* Dodany margines wewnętrzny */
+                font-family: "Courier New", monospace;
+                font-weight: 900;
+                font-size: 14px; /* Zwiększona czcionka */
+            }
+            
+            QPushButton:hover, QComboBox:hover {
+                background-color: #6e6e6e;
+            }
+            
+            QPushButton:pressed {
+                border-top: 3px solid #212121;
+                border-left: 3px solid #212121;
+                border-bottom: 3px solid #949494;
+                border-right: 3px solid #949494;
+                padding-top: 6px; 
+                padding-left: 12px;
+            }
+            
+            /* -- NAPRAWA LISTY ROZWIJANEJ -- */
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 30px;
+                background-color: #4f4f4f; /* Ciemniejsze tło dla sekcji strzałki */
+                border-left: 2px solid #212121; /* Oddzielenie strzałki od tekstu */
+            }
+            
+            /* Kanciasta, "pikselowa" strzałka */
+            QComboBox::down-arrow {
+                width: 10px;
+                height: 10px;
+                background-color: #ffffff; /* Biały kwadracik udający strzałkę */
+            }
+            
+            /* Stylizacja okienka z listą elementów po kliknięciu */
+            QComboBox QAbstractItemView {
+                background-color: #222222;
+                color: #ffffff;
+                border: 2px solid #000000;
+                selection-background-color: #5c5c5c;
+                font-family: "Courier New", monospace;
+            }
+        """)
 
         # Ustalenie layout paska dolnego
         navigation_bar_layout = QtWidgets.QHBoxLayout(navigation_bar)
@@ -228,6 +289,11 @@ class GameWindow(QtWidgets.QMainWindow):
 
         self.button_next_word = QtWidgets.QPushButton("Losuj kolejne hasło")
         self.button_next_word.clicked.connect(self.button_next_word_click)
+
+        # Zrownanie wysokosci
+        self.combo_level.setMinimumHeight(60)
+        self.combo_category.setMinimumHeight(60)
+        self.button_next_word.setMinimumHeight(60)
 
         self.current_word = self.get_word()[0].upper()
 
