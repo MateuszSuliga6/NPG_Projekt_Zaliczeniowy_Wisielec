@@ -1,4 +1,5 @@
 import sys
+import random 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QIcon
 from Responsive_Widget import ResponsiveBgFrame
@@ -8,11 +9,67 @@ from save_manager import SaveManager
 import os
 import ctypes
 
+# --- NOWE: Importujemy nasz nowy lewy panel ---
+from shop_panel import HudPanel 
+
+class ShopDialog(QtWidgets.QDialog):
+    def __init__(self, player_name: str, stats_manager: StatsManager, parent=None):
+        super().__init__(parent)
+        self.player_name = player_name
+        self._stats_manager = stats_manager
+        self.setWindowTitle(f"Sklep z mocami - {self.player_name}")
+        self.resize(350, 250)
+
+        layout = QtWidgets.QVBoxLayout(self)
+
+        self.lbl_coins = QtWidgets.QLabel()
+        self.lbl_coins.setStyleSheet("font-size: 16px; font-weight: bold; color: #f39c12;")
+        self.lbl_coins.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.lbl_coins)
+
+        # Przycisk: Podpowiedź
+        self.btn_hint = QtWidgets.QPushButton("💡 Odkryj losową literę\n Cena: 30 monet")
+        self.btn_hint.setMinimumHeight(60)
+        self.btn_hint.clicked.connect(self.buy_hint)
+        layout.addWidget(self.btn_hint)
+
+        # Przycisk: Życie
+        self.btn_life = QtWidgets.QPushButton("❤️ Dodatkowe życie (cofa błąd)\n Cena: 15 monet")
+        self.btn_life.setMinimumHeight(60)
+        self.btn_life.clicked.connect(self.buy_life)
+        layout.addWidget(self.btn_life)
+
+        btn_close = QtWidgets.QPushButton("Wróć do gry")
+        btn_close.clicked.connect(self.accept)
+        layout.addWidget(btn_close)
+
+        self.update_ui()
+
+    def update_ui(self):
+        stats = self._stats_manager.get_player_stats(self.player_name)
+        coins = stats.get("coins", 0)
+        self.lbl_coins.setText(f"Twoje monety: {coins}")
+        self.btn_hint.setEnabled(coins >= 30)
+        self.btn_life.setEnabled(coins >= 15)
+
+    def buy_hint(self):
+        if self._stats_manager.purchase_item(self.player_name, "hints", 30):
+            self.update_ui()
+            if self.parent():
+                self.parent().update_hud()
+
+    def buy_life(self):
+        if self._stats_manager.purchase_item(self.player_name, "extra_lives", 15):
+            self.update_ui()
+            if self.parent():
+                self.parent().update_hud()
+
 
 class StatsDialog(QtWidgets.QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, player_name: str, parent=None): 
         super().__init__(parent)
-        self.setWindowTitle("Twoje Osiągnięcia i Historia")
+        self.player_name = player_name
+        self.setWindowTitle(f"Twoje Osiągnięcia i Historia - {self.player_name}")
         self.resize(450, 450)
 
         self._stats_manager = StatsManager()
@@ -59,7 +116,7 @@ class StatsDialog(QtWidgets.QDialog):
         self.load_data()
 
     def load_data(self):
-        p_stats = self._stats_manager.get_player_stats("Local player")
+        p_stats = self._stats_manager.get_player_stats(self.player_name) 
 
         if p_stats:
             self.table.setRowCount(1)
@@ -105,13 +162,16 @@ class StatsDialog(QtWidgets.QDialog):
                 self, "Zresetowano", "Statystyki zostały pomyślnie wyczyszczone."
             )
 
+
 class GameWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym")
         self._data_manager = DataManager()
         self._stats_manager = StatsManager()
         self._save_manager = SaveManager()
+        
+        self.player_name = self.ask_for_player_name()
+        self.setWindowTitle(f"Wisielec - Gra z interfejsem graficznym | Gracz: {self.player_name}")
 
         # Ustalenie layout głównego całego okna
         master_layout = QtWidgets.QVBoxLayout()
@@ -122,7 +182,6 @@ class GameWindow(QtWidgets.QMainWindow):
         # Ustalenie istnienia paska dolnego i jego formatowania
         navigation_bar = QtWidgets.QFrame()
         navigation_bar.setObjectName("Navigation_bar")
-        # Color added for debug, change later
         navigation_bar.setStyleSheet(" background-color: #2c3e50; min-width: 100px; max-height: 100px")
 
         # Ustalenie layout paska dolnego
@@ -143,7 +202,7 @@ class GameWindow(QtWidgets.QMainWindow):
         self.combo_category.setMaxVisibleItems(3)
         self.combo_category.textActivated.connect(self.on_category_changed)
 
-        #  Układ siatki dla 4 przycisków ---
+        #  Układ siatki dla przycisków ---
         buttons_grid_widget = QtWidgets.QWidget()
         buttons_grid = QtWidgets.QGridLayout(buttons_grid_widget)
         buttons_grid.setContentsMargins(0, 0, 0, 0)
@@ -155,21 +214,20 @@ class GameWindow(QtWidgets.QMainWindow):
         self.button_rules = QtWidgets.QPushButton("Zasady gry")
         self.button_stats = QtWidgets.QPushButton("Statystyki")
 
-        # Rozmieszczenie w siatce: addWidget(widget, wiersz, kolumna)
-        # Kolumna 1
+        # Rozmieszczenie w siatce (wracamy do czystego 2x2, bez sklepu)
         buttons_grid.addWidget(self.button_save_game, 0, 0)
         buttons_grid.addWidget(self.button_load_game, 1, 0)
-        # Kolumna 2
         buttons_grid.addWidget(self.button_rules, 0, 1)
         buttons_grid.addWidget(self.button_stats, 1, 1)
 
-        # Podpięcie sygnałów pod  metody
+        # Podpięcie sygnałów pod metody
         self.button_save_game.clicked.connect(self.on_save_game_clicked)
         self.button_load_game.clicked.connect(self.on_load_game_clicked)
         self.button_rules.clicked.connect(self.on_rules_clicked)
         self.button_stats.clicked.connect(self.on_stats_clicked)
 
         self.button_next_word = QtWidgets.QPushButton("Losuj kolejne hasło")
+        self.button_next_word.clicked.connect(self.button_next_word_click)
 
         self.current_word = self.get_word()[0].upper()
 
@@ -180,7 +238,25 @@ class GameWindow(QtWidgets.QMainWindow):
 
         # Ustawienie głównego okna rozgrywki
         self.main_content = ResponsiveBgFrame("Assets/klasa_latwy.png")
-        main_layout = QtWidgets.QVBoxLayout(self.main_content)
+        
+        # --- ZMIANA: Zmieniamy układ na HBox, żeby dodać panel po lewej ---
+        main_layout = QtWidgets.QHBoxLayout(self.main_content)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Inicjalizacja nowego, pływającego lewego panelu HUD
+        self.hud_panel = HudPanel()
+        self.hud_panel.setFixedWidth(130) # Ustala stałą szerokość lewego paska
+        
+        # Podpinamy sygnały z przycisków wewnątrz panelu
+        self.hud_panel.btn_shop.clicked.connect(self.on_shop_clicked)
+        self.hud_panel.btn_hint.clicked.connect(self.use_hint)
+        self.hud_panel.btn_life.clicked.connect(self.use_life)
+
+        # Dodajemy panel do głównego widoku dociskając go do lewej i do DOŁU
+        main_layout.addWidget(
+            self.hud_panel, 
+            alignment=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignLeft
+        )
 
         # --- FIX: Przekazanie pełnego stanu początkowego do rysowania przez QPainter ---
         self.main_content.set_word_display(self.generate_masked_word())
@@ -188,42 +264,70 @@ class GameWindow(QtWidgets.QMainWindow):
         self.main_content.set_guessed_letters(self.guessed_letters)
         self.main_content.set_pending_guess(None)
 
-        '''
-        main_layout.addWidget(self.text)
-
-        self.update_counter_display()
-
-        _font = self.text.font()
-        _font.setPointSize(24)
-        _font.setBold(True)
-        self.text.setFont(_font)
-        '''
-
-        # Ustawienie elementów paska nawigacji
+        # Ustawienie elementów paska nawigacji (ZDECYDOWANIE MNIEJ ELEMENTÓW!)
         navigation_bar_layout.addWidget(self.button_next_word)
         navigation_bar_layout.addWidget(self.combo_level)
         navigation_bar_layout.addWidget(self.combo_category)
-
-        # Wrzucamy siatkę z 4 przyciskami zamiast starego labela
         navigation_bar_layout.addWidget(buttons_grid_widget)
-        self.button_next_word.clicked.connect(self.button_next_word_click)
 
         # Ustawianie ułożenia całego okna gry
         master_layout.addWidget(self.main_content)
         master_layout.addWidget(navigation_bar)
         master_layout.addStretch()
 
-        main_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-
         container = QtWidgets.QWidget()
         container.setLayout(master_layout)
         self.setCentralWidget(container)
+        
+        self.update_hud()
+
+    def ask_for_player_name(self) -> str:
+        text, ok = QtWidgets.QInputDialog.getText(
+            self, "Witaj w grze!", "Podaj swój nick, aby śledzić statystyki i zbierać monety:",
+            QtWidgets.QLineEdit.EchoMode.Normal, ""
+        )
+        if ok and text.strip():
+            return text.strip()
+        return "Gość"
+
+    def update_hud(self):
+        """Aktualizuje elementy lewego panelu na podstawie profilu gracza."""
+        stats = self._stats_manager.get_player_stats(self.player_name)
+        if stats:
+            # Monety w rogu planszy (ResponsiveBgFrame)
+            self.main_content.set_coins(stats.get("coins", 0))
+            
+            # Moce specjalne w lewym panelu HUD
+            hints = stats.get('hints', 0)
+            lives = stats.get('extra_lives', 0)
+            self.hud_panel.update_inventory(hints, lives, self.wrong_guesses_counter)
+
+    def use_hint(self):
+        """Losuje nieodgadniętą literę i ją odkrywa, zużywając podpowiedź."""
+        unrevealed = [char for char in self.current_word if char not in self.guessed_letters and char.isalpha()]
+        if not unrevealed:
+            return 
+            
+        if self._stats_manager.consume_item(self.player_name, "hints"):
+            hint_letter = random.choice(list(set(unrevealed)))
+            self.process_confirmed_guess(hint_letter)
+            self.update_hud()
+
+    def use_life(self):
+        """Cofa licznik błędów o jeden, ratując przed powieszeniem."""
+        if self.wrong_guesses_counter > 0:
+            if self._stats_manager.consume_item(self.player_name, "extra_lives"):
+                self.wrong_guesses_counter -= 1
+                self.update_counter_display()
+                self.update_hud()
+
+    @QtCore.Slot()
+    def on_shop_clicked(self) -> None:
+        dialog = ShopDialog(self.player_name, self._stats_manager, self)
+        dialog.exec()
 
     @QtCore.Slot()
     def on_save_game_clicked(self) -> None:
-        #Slot obsługujący zapis aktualnego stanu rozgrywki.
-        # Ponieważ guessed_letters to Pythonowy `set` (zbiór), musimy go
-        # zmienić na listę, bo JSON nie potrafi zapisać zbiorów bezpośrednio.
         state = {
             "level": self._level,
             "category": self._category,
@@ -240,7 +344,6 @@ class GameWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def on_load_game_clicked(self) -> None:
-        #Slot obsługujący wczytanie zapisanego stanu rozgrywki.
         state = self._save_manager.load_state()
 
         if state is None:
@@ -249,26 +352,20 @@ class GameWindow(QtWidgets.QMainWindow):
             )
             return
 
-        # Przywracanie zmiennych stanu gry z wczytanego słownika
         self._level = state["level"]
         self._category = state["category"]
         self.current_word = state["current_word"]
         self.wrong_guesses_counter = state["wrong_guesses_counter"]
-
-        # Konwertujemy listę z JSONa z powrotem na set()
         self.guessed_letters = set(state["guessed_letters"])
 
-        # Wymuszenie aktualizacji interfejsu (GUI), aby pokazać wczytany stan
         self.update_word_display()
         self.update_counter_display()
 
-        # --- FIX: Przekazanie załadowanych danych prosto do warstwy graficznej ---
         self.main_content.set_word_display(self.generate_masked_word())
         self.main_content.set_error_count(self.wrong_guesses_counter)
         self.main_content.set_guessed_letters(self.guessed_letters)
         self.main_content.set_pending_guess(None)
 
-        # Aktualizacja tła dopasowana do wczytanego poziomu trudności
         if self._level == "Łatwy":
             self.main_content.change_image('Assets/klasa_latwy.png')
         elif self._level == "Średni":
@@ -276,9 +373,10 @@ class GameWindow(QtWidgets.QMainWindow):
         elif self._level == "Trudny":
             self.main_content.change_image('Assets/klasa_trudny.png')
 
-        # --- FIX: Synchronizacja wizualna kontrolek QComboBox z wczytanym stanem ---
         self.combo_level.setCurrentText(self._level)
         self.combo_category.setCurrentText(self._category)
+        
+        self.update_hud()
 
         QtWidgets.QMessageBox.information(
             self, "Wczytano", "Gra została pomyślnie przywrócona!"
@@ -286,7 +384,6 @@ class GameWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def on_rules_clicked(self) -> None:
-        # Slot wyświetlający okienko z zasadami gry.
         rules_text = (
             "<h3><b>Zasady gry Wisielec</b></h3>"
             "<p>Twoim zadaniem jest odgadnięcie ukrytego hasła, zanim kat wykona wyrok!</p>"
@@ -306,25 +403,16 @@ class GameWindow(QtWidgets.QMainWindow):
             rules_text
         )
 
-
     @QtCore.Slot()
     def on_stats_clicked(self) -> None:
-        # Tworzymy instancję naszego nowego okna dialogowego
-        dialog = StatsDialog(self)
-        # .exec() otwiera okno jako "modalne" (blokuje okno główne, dopóki nie zamkniesz statystyk)
+        dialog = StatsDialog(self.player_name, self) 
         dialog.exec()
-
-
-
 
     @QtCore.Slot()
     def on_level_changed(self, selected_text: str) -> None:
-        # Wymuszenie update GUI, po zmianie poziomu
-
         self._level = selected_text
         self.current_guess = None
         self.main_content.set_pending_guess(None)
-
 
         if selected_text == "Łatwy" :
             self.main_content.change_image('Assets/klasa_latwy.png')
@@ -337,8 +425,6 @@ class GameWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def on_category_changed(self, selected_text: str) -> None:
-        # Wymuszenie update GUI, po zmianie kategorii
-
         self._category = selected_text
         self.current_guess = None
         self.main_content.set_pending_guess(None)
@@ -350,33 +436,26 @@ class GameWindow(QtWidgets.QMainWindow):
         self.guessed_letters.clear()
         self.wrong_guesses_counter = 0
 
-        # Send the newly cleared empty set to wipe the sprite list clean from the previous match
         self.main_content.set_guessed_letters(self.guessed_letters)
-
         self.update_word_display()
         self.update_counter_display()
+        self.update_hud() 
 
     def update_word_display(self):
-        """Redirects game engine calculations into the background widget painter."""
-        # Pushes your generated underscores and guessed letters directly to the sprite loop
         self.main_content.set_word_display(self.generate_masked_word())
 
     def generate_masked_word(self) -> str:
-        """Converts the current word into a string of underscores and spaces."""
         display_letters = []
         for letter in self.current_word:
             if letter in self.guessed_letters:
                 display_letters.append(letter)
             elif letter.isspace() or letter in ["-", "'"]:
-                display_letters.append(letter)  # Keep spaces/hyphens visible
+                display_letters.append(letter)
             else:
                 display_letters.append("_")
         return " ".join(display_letters)
 
     def update_counter_display(self):
-        """Updates a label showing how many mistakes have been made."""
-        # Assuming you have a label named 'self.counter_label'
-        # self.counter_label.setText(f"Mistakes: {self.wrong_guesses_counter} / {self.max_wrong_guesses}")
         self.main_content.set_error_count(self.wrong_guesses_counter)
 
     def keyPressEvent(self, event):
@@ -384,10 +463,7 @@ class GameWindow(QtWidgets.QMainWindow):
             if self.current_guess is not None:
                 guess = self.current_guess
                 self.current_guess = None
-
-                # Push None to clear the indicator on screen after confirming
                 self.main_content.set_pending_guess(None)
-
                 self.process_confirmed_guess(guess)
             return
 
@@ -401,43 +477,30 @@ class GameWindow(QtWidgets.QMainWindow):
             return
 
         self.current_guess = potential_guess
-
-        # Push the staged letter to the frame to trigger the painter update!
         self.main_content.set_pending_guess(self.current_guess)
 
     def process_confirmed_guess(self, guess: str):
-        """Evaluates the validated guess against the current hidden word rules."""
         self.guessed_letters.add(guess)
-
-        # PUSH THE UPDATED SET TO THE VIEWPORT GRAPHICS LAYER!
         self.main_content.set_guessed_letters(self.guessed_letters)
 
-
         if guess in self.current_word:
-            # Correct guess! Update the interface text
             self.update_word_display()
-
-            # Check for Win condition (no underscores left)
             if "_" not in self.generate_masked_word():
                 self.end_game(won=True)
         else:
-            # Wrong guess! Increment counter
             self.wrong_guesses_counter += 1
             self.update_counter_display()
+            self.update_hud() 
 
-            # Check for Lose condition
             if self.wrong_guesses_counter >= self.max_wrong_guesses:
                 self.end_game(won=False)
 
     def end_game(self, won: bool):
-        # Zabezpieczenie antycheaterkie zwiazane z abusowaniem zapisywania stanu gry
         self._save_manager.delete_save()
 
-        """Obsługuje zapis statystyk do pliku JSON oraz wyświetla pop-up końca gry."""
         total_letters = len(self.guessed_letters)
         correct_letters = total_letters - self.wrong_guesses_counter
 
-        # Wymuszamy zapis na dokładnie ten sam klucz, którego szuka okienko dialogowe
         self._stats_manager.save_game_stats(
             level=self._level,
             category=self._category,
@@ -445,10 +508,9 @@ class GameWindow(QtWidgets.QMainWindow):
             total_letters_typed=total_letters,
             correct_letters_typed=correct_letters,
             word_text=self.current_word,
-            player_name="Local player"  # <--- UPEWNIJ SIĘ, ŻE TO TU JEST
+            player_name=self.player_name  
         )
 
-        # Wyświetlenie okienka z informacją o wyniku
         msg = QtWidgets.QMessageBox(self)
         if won:
             msg.setWindowTitle("Gratulacje!")
@@ -458,8 +520,8 @@ class GameWindow(QtWidgets.QMainWindow):
             msg.setText(f"Przegrałeś. Prawidłowe hasło: {self.current_word}")
         msg.exec()
 
-        # Reset planszy i wylosowanie nowego słowa
         self.button_next_word_click()
+        self.update_hud() 
 
     def get_word(self) -> tuple[str,int]:
         result: tuple[list[str],int]|None = self._data_manager.get_final_word(self._level, self._category)
@@ -470,39 +532,19 @@ class GameWindow(QtWidgets.QMainWindow):
         return "".join(result[0]), result[1]
 
     def resizeEvent(self, event):
-        """Intercepts window resize events, forces 2:1 game frame scale,
-
-        and snaps the main window tightly around the content.
-        """
-        # Call the default behavior first
         super().resizeEvent(event)
-
-        # 1. Determine the active width of the central widget
         current_width = self.centralWidget().width()
-
-        # 2. Calculate the strict 2:1 height for the game artwork
         target_game_height = int(current_width / 2)
-
-        # 3. Lock the game frame to this exact height
         self.main_content.setFixedHeight(target_game_height)
-
-        # 4. Grab the physical height of your bottom navigation bar
-        # (It's set to min/max height of 60px in your code, but checking dynamically is safer)
         nav_height = self.findChild(QtWidgets.QFrame, "Navigation_bar").height()
-
-        # 5. The perfect window height is: Game Height + Nav Bar Height + Title Bar/Margins
-        # We can calculate this by asking the master layout for its minimum total hint.
         total_content_height = target_game_height + nav_height
-
-        # 6. Force the window framework to match this height exactly.
-        # This completely cuts off the trailing dead space!
         self.setFixedHeight(total_content_height)
 
 if __name__ == "__main__":
-    if os.name == 'nt':  # Checks if the operating system is Windows
-        myappid = 'mycompany.mygame.hangman.v1'  # A completely custom unique string
+    if os.name == 'nt': 
+        myappid = 'mycompany.mygame.hangman.v1'  
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    # --------------------------------
+    
     app = QtWidgets.QApplication(sys.argv)
     window = GameWindow()
     window.show()

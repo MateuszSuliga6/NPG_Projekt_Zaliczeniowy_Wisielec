@@ -1,0 +1,15 @@
+# Pliki tymczasowe Pythona
+__pycache__/
+*.pyc
+
+# Środowiska wirtualne
+venv/
+.venv/
+
+# Prywatne zapisy gry i statystyki
+data/stats.json
+data/stats_test.json
+data/savegame.json
+
+# Pliki systemowe Mac OS
+.DS_Store

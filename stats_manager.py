@@ -43,7 +43,12 @@ class StatsManager:
                 "correct_letters": 0,
                 "current_win_streak": 0,  # Aktualna seria zwycięstw
                 "max_win_streak": 0,  # Rekordowa seria gier bez porażki (high-score serii)
-                "won_words_history": []  # Lista haseł, na których wygrano
+                "won_words_history": [],  # Lista haseł, na których wygrano
+                
+                # --- NOWE: Waluta i moce dla nowego gracza ---
+                "coins": 0,
+                "extra_lives": 0,
+                "hints": 0
             }
 
         player = stats["players"][player_name]
@@ -56,6 +61,17 @@ class StatsManager:
         # 2. Logika serii zwycięstw (high-score gier bez porażki) i historii wygranych haseł
         if result:  # Jeśli gracz WYGRAŁ
             player["current_win_streak"] += 1
+            
+            # --- NOWE: Dynamiczna nagroda w postaci monet zależnie od poziomu ---
+            if level.lower() == "łatwy":
+                player["coins"] += 5
+            elif level.lower() == "średni":
+                player["coins"] += 10
+            elif level.lower() == "trudny":
+                player["coins"] += 15
+            else:
+                player["coins"] += 5  # Domyślna wartość w razie błędu
+            
             # Sprawdzenie czy pobito rekord serii bez porażki
             if player["current_win_streak"] > player["max_win_streak"]:
                 player["max_win_streak"] = player["current_win_streak"]
@@ -79,6 +95,12 @@ class StatsManager:
 
         player_data = players[player_name].copy()
 
+        # Zabezpieczenie dla starych zapisów, które mogły nie mieć monet
+        if "coins" not in player_data:
+            player_data["coins"] = 0
+            player_data["extra_lives"] = 0
+            player_data["hints"] = 0
+
         # Dynamiczne wyliczanie skuteczności procentowej
         total = player_data["total_letters"]
         correct = player_data["correct_letters"]
@@ -100,4 +122,41 @@ class StatsManager:
             self._write_json(stats)
             return True
 
+        return False
+
+    # --- NOWE: Funkcja obsługująca sklep ---
+    def purchase_item(self, player_name: str, item_type: str, cost: int) -> bool:
+        """Odejmuje monety i dodaje przedmiot, jeśli gracza stać. Zwraca True jeśli kupiono."""
+        stats = self._read_json()
+        
+        # Sprawdzamy, czy gracz w ogóle istnieje
+        if player_name not in stats["players"]:
+            return False
+            
+        player = stats["players"][player_name]
+        
+        # Sprawdzamy stan konta i czy przedmiot to faktycznie np. 'extra_lives' lub 'hints'
+        if player.get("coins", 0) >= cost and item_type in player:
+            player["coins"] -= cost
+            player[item_type] += 1
+            self._write_json(stats)
+            return True
+            
+        return False
+
+    def consume_item(self, player_name: str, item_type: str) -> bool:
+        """Zużywa przedmiot z ekwipunku, jeśli gracz go posiada."""
+        stats = self._read_json()
+        
+        if player_name not in stats["players"]:
+            return False
+            
+        player = stats["players"][player_name]
+        
+        # Sprawdza czy gracz ma co najmniej 1 sztukę przedmiotu
+        if player.get(item_type, 0) > 0:
+            player[item_type] -= 1
+            self._write_json(stats)
+            return True
+            
         return False

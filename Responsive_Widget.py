@@ -63,6 +63,10 @@ class ResponsiveBgFrame(QFrame):
         self.pending_guess = None
         self.guessed_letters_list = []
 
+        # --- NOWE: HUD dla Monet ---
+        self.current_coins = 0
+        self.coin_pixmap = QPixmap("Assets/moneta.png")
+
         alphabet_paths = {
             "A": "Assets/Alfabet/A.png", "Ą": "Assets/Alfabet/A_.png",
             "B": "Assets/Alfabet/B.png", "C": "Assets/Alfabet/C.png",
@@ -117,6 +121,11 @@ class ResponsiveBgFrame(QFrame):
         # Convert to a sorted list so the assets don't bounce around randomly on screen
         self.guessed_letters_list = sorted(list(letters))
         self.update()
+    
+    def set_coins(self, amount: int):
+        """Odbiera aktualny stan konta gracza z main.py i wymusza przerysowanie."""
+        self.current_coins = amount
+        self.update()
 
     def paintEvent(self, event):
         if self.base_pixmap.isNull():
@@ -135,6 +144,31 @@ class ResponsiveBgFrame(QFrame):
             Qt.TransformationMode.SmoothTransformation
         )
         painter.drawPixmap(0, 0, scaled_pixmap)
+
+        # --- DRAW COIN HUD (Top Left) ---
+        if not self.coin_pixmap.isNull():
+            coin_size = max(24, int(self.width() * 0.04))
+            scaled_coin = self.coin_pixmap.scaled(
+                coin_size, coin_size,
+                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+            )
+            # Rysowanie samej monety
+            painter.drawPixmap(15, 15, scaled_coin)
+            
+            # Rysowanie tekstu ze stanem konta
+            painter.save()
+            font = painter.font()
+            font.setFamily("Arial")
+            font.setPointSize(max(14, int(self.width() * 0.025)))
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor("#f1c40f"))  # Złoty kolor (zółty)
+            
+            # Pozycjonowanie tekstu obok monety
+            text_x = 15 + coin_size + 10
+            text_y = 10 + (coin_size // 2) + (font.pointSize() // 2)
+            painter.drawText(text_x, text_y, str(self.current_coins))
+            painter.restore()
 
         # --- DRAW HANGMAN STAGE (Top Right) ---
         current_stage_pixmap = self.hangman_stages[self.current_errors]
