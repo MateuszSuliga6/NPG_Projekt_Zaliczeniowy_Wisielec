@@ -141,7 +141,7 @@ class ResponsiveBgFrame(QFrame):
             self.width(),
             self.height(),
             Qt.AspectRatioMode.IgnoreAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
+            Qt.TransformationMode.FastTransformation
         )
         painter.drawPixmap(0, 0, scaled_pixmap)
 
@@ -150,7 +150,7 @@ class ResponsiveBgFrame(QFrame):
             coin_size = max(24, int(self.width() * 0.04))
             scaled_coin = self.coin_pixmap.scaled(
                 coin_size, coin_size,
-                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation
             )
             # Rysowanie samej monety
             painter.drawPixmap(15, 15, scaled_coin)
@@ -178,7 +178,7 @@ class ResponsiveBgFrame(QFrame):
                 dynamic_width,
                 dynamic_width,
                 Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
+                Qt.TransformationMode.FastTransformation
             )
             x_pos_right = self.width() - scaled_hangman.width() - int(self.width() * 0.05)
             y_pos_top = int(self.height() * 0.11) - 2
@@ -192,7 +192,7 @@ class ResponsiveBgFrame(QFrame):
                 dynamic_width,
                 dynamic_width,
                 Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
+                Qt.TransformationMode.FastTransformation
             )
             x_pos_left = self.width() - scaled_sprite_player.width()
             y_pos_bottom = self.height() - scaled_sprite_player.height()
@@ -251,7 +251,7 @@ class ResponsiveBgFrame(QFrame):
                         if sprite and not sprite.isNull():
                             scaled_letter = sprite.scaled(
                                 letter_size, letter_size,
-                                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                                Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.FastTransformation
                             )
                             current_x = start_x + (col_idx * (letter_size + standard_spacing))
                             painter.drawPixmap(current_x, current_y, scaled_letter)
@@ -271,7 +271,7 @@ class ResponsiveBgFrame(QFrame):
                     indicator_size,
                     indicator_size,
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
+                    Qt.TransformationMode.FastTransformation
                 )
 
                 # 3. COORDINATE LAYOUT RULES (Position it manually here)
@@ -313,7 +313,7 @@ class ResponsiveBgFrame(QFrame):
                         used_letter_size,
                         used_letter_size,
                         Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation
+                        Qt.TransformationMode.FastTransformation
                     )
 
                     # Calculate horizontal shifting per letter item
