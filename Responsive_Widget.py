@@ -1,7 +1,21 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QPainter, QColor, QMovie, QPen
 from PySide6.QtWidgets import QFrame
+import sys
+import os
 
+
+def resolve_path(relative_path: str) -> str:
+    """
+    Redirects relative paths to PyInstaller's temporary extraction
+    directory if running as a compiled executable.
+    """
+    if hasattr(sys, '_MEIPASS'):
+        # Running as a compiled .exe
+        return os.path.join(sys._MEIPASS, relative_path)
+
+    # Running normally as a Python script
+    return os.path.join(os.path.abspath("."), relative_path)
 
 POLISH_ALPHABET_SPRITES = {
             "A": "Assets/Alfabet/A.png",
@@ -46,7 +60,7 @@ class ResponsiveBgFrame(QFrame):
         self.setAutoFillBackground(False)
 
         # --- GIF MOVIE SETUP (Bottom Left) ---
-        self.sprite_movie = QMovie("Assets/Gracz_Animacja/Animacja_Gracza_Gif.gif", parent=self)
+        self.sprite_movie = QMovie(resolve_path("Assets/Gracz_Animacja/Animacja_Gracza_Gif.gif"), parent=self)
         self.sprite_movie.frameChanged.connect(self.unbuffered_update)
         self.sprite_movie.start()
 
@@ -57,7 +71,7 @@ class ResponsiveBgFrame(QFrame):
         # Assumes files are named: Assets/stage_0.png, Assets/stage_1.png, etc.
         self.hangman_stages = []
         for i in range(1, 8):
-            self.hangman_stages.append(QPixmap(f"Assets/Szubienica/Szubienica{i}.png"))
+            self.hangman_stages.append(QPixmap(resolve_path(f"Assets/Szubienica/Szubienica{i}.png")))
 
         self.current_word_display = None
         self.pending_guess = None
@@ -65,7 +79,7 @@ class ResponsiveBgFrame(QFrame):
 
         # --- NOWE: HUD dla Monet ---
         self.current_coins = 0
-        self.coin_pixmap = QPixmap("Assets/moneta.png")
+        self.coin_pixmap = QPixmap(resolve_path("Assets/moneta.png"))
 
         alphabet_paths = {
             "A": "Assets/Alfabet/A.png", "Ą": "Assets/Alfabet/A_.png",
@@ -90,7 +104,7 @@ class ResponsiveBgFrame(QFrame):
         # Convert everything into pre-cached QPixmaps for smooth, hardware-backed rendering
         self.alphabet_sprites = {}
         for char, path in alphabet_paths.items():
-            self.alphabet_sprites[char] = QPixmap(path)
+            self.alphabet_sprites[char] = QPixmap(resolve_path(path))
 
     def change_image(self, new_image_path):
         self.base_pixmap = QPixmap(new_image_path)
@@ -111,7 +125,7 @@ class ResponsiveBgFrame(QFrame):
         self.current_word_display = masked_word
         self.update()
 
-    def set_pending_guess(self, letter: str or None):
+    def set_pending_guess(self, letter: str | None):
         """Receives the staged letter waiting for Enter confirmation and redraws."""
         self.pending_guess = letter
         self.update()

@@ -10,7 +10,19 @@ import os
 import ctypes
 
 # --- NOWE: Importujemy nasz nowy lewy panel ---
-from shop_panel import HudPanel 
+from shop_panel import HudPanel
+
+def resolve_path(relative_path: str) -> str:
+    """
+    Redirects relative paths to PyInstaller's temporary extraction
+    directory if running as a compiled executable.
+    """
+    if hasattr(sys, '_MEIPASS'):
+        # Running as a compiled .exe
+        return os.path.join(sys._MEIPASS, relative_path)
+
+    # Running normally as a Python script
+    return os.path.join(os.path.abspath("."), relative_path)
 
 class ShopDialog(QtWidgets.QDialog):
     def __init__(self, player_name: str, stats_manager: StatsManager, parent=None):
@@ -176,7 +188,7 @@ class GameWindow(QtWidgets.QMainWindow):
         # Ustalenie layout głównego całego okna
         master_layout = QtWidgets.QVBoxLayout()
         master_layout.setContentsMargins(0, 0, 0, 0)
-        self.setWindowIcon(QIcon("Assets/Logo.png"))
+        self.setWindowIcon(QIcon(resolve_path("Assets/Logo.png")))
         master_layout.setSpacing(0)
 
         # Ustalenie istnienia paska dolnego i jego formatowania
@@ -303,7 +315,7 @@ class GameWindow(QtWidgets.QMainWindow):
         self.current_guess = None
 
         # Ustawienie głównego okna rozgrywki
-        self.main_content = ResponsiveBgFrame("Assets/klasa_latwy.png")
+        self.main_content = ResponsiveBgFrame(resolve_path("Assets/klasa_latwy.png"))
         
         # --- ZMIANA: Zmieniamy układ na HBox, żeby dodać panel po lewej ---
         main_layout = QtWidgets.QHBoxLayout(self.main_content)
@@ -433,11 +445,11 @@ class GameWindow(QtWidgets.QMainWindow):
         self.main_content.set_pending_guess(None)
 
         if self._level == "Łatwy":
-            self.main_content.change_image('Assets/klasa_latwy.png')
+            self.main_content.change_image(resolve_path('Assets/klasa_latwy.png'))
         elif self._level == "Średni":
-            self.main_content.change_image('Assets/klasa_sredni.png')
+            self.main_content.change_image(resolve_path('Assets/klasa_sredni.png'))
         elif self._level == "Trudny":
-            self.main_content.change_image('Assets/klasa_trudny.png')
+            self.main_content.change_image(resolve_path('Assets/klasa_trudny.png'))
 
         self.combo_level.setCurrentText(self._level)
         self.combo_category.setCurrentText(self._category)
@@ -481,11 +493,11 @@ class GameWindow(QtWidgets.QMainWindow):
         self.main_content.set_pending_guess(None)
 
         if selected_text == "Łatwy" :
-            self.main_content.change_image('Assets/klasa_latwy.png')
+            self.main_content.change_image(resolve_path('Assets/klasa_latwy.png'))
         elif selected_text == "Średni":
-            self.main_content.change_image('Assets/klasa_sredni.png')
+            self.main_content.change_image(resolve_path('Assets/klasa_sredni.png'))
         elif selected_text == "Trudny" :
-            self.main_content.change_image('Assets/klasa_trudny.png')
+            self.main_content.change_image(resolve_path('Assets/klasa_trudny.png'))
 
         self.button_next_word_click()
 
