@@ -1,68 +1,65 @@
-import json
+# -*- coding: utf-8 -*-
 import os
-from datetime import datetime
+import json
+from typing import Any
 
 
 class StatsManager:
-    def __init__(self):
-        # Relatywny zapis ścieżek, dla uniwersalności
+    def __init__(self) -> None:
+        """ Relatywny zapis ścieżek, dla uniwersalności """
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self._full_path = os.path.join(base_dir, 'data', 'stats.json')
         self._ensure_file_exists()
 
-    def _read_json(self):
+    def _read_json(self) -> dict[str, Any]:
         with open(self._full_path, 'r', encoding='utf-8') as json_file:
             return json.load(json_file)
 
-    def _write_json(self, data: dict):
+    def _write_json(self, data: dict) -> None:
         with open(self._full_path, 'w', encoding='utf-8') as json_file:
             json.dump(data, json_file, ensure_ascii=False, indent=4)
 
-    def _ensure_file_exists(self):
+    def _ensure_file_exists(self) -> None:
         dir_name = os.path.dirname(self._full_path)
 
-        # Sprawdzenie czy jest folder data i ewentualne utworzenie go
-        if not os.path.exists(dir_name):
+        if not os.path.exists(dir_name): # Sprawdzenie czy istnieje folder data i ewentualne utworzenie go
             os.makedirs(dir_name)
 
-        # Sprawdzenie czy jest plik stats.json i ewentualne utworzenie go
-        if not os.path.exists(self._full_path):
+        if not os.path.exists(self._full_path): # Sprawdzenie czy istnieje plik stats.json i ewentualne utworzenie go
             default_structure = {"players": {}}
             self._write_json(default_structure)
 
-    def save_game_stats(self, level: str, category: str, result: bool,
-                        total_letters_typed: int, correct_letters_typed: int, word_text: str, player_name: str = "Local player"):
+    def save_game_stats(self, level: str, result: bool,
+                        total_letters_typed: int, correct_letters_typed: int,
+                        word_text: str, player_name: str = "Local player") -> None:
 
-        stats = self._read_json()
+        stats: dict = self._read_json()
 
-        # Obsługa nowego gracza z nową strukturą pól
+        # Obsługa nowego gracza
         if player_name not in stats["players"]:
             stats["players"][player_name] = {
                 "games_played": 0,
                 "total_letters": 0,
                 "correct_letters": 0,
-                "current_win_streak": 0,  # Aktualna seria zwycięstw
-                "max_win_streak": 0,  # Rekordowa seria gier bez porażki (high-score serii)
-                "won_words_history": [],  # Lista haseł, na których wygrano
-                
-                # --- NOWE: Waluta i moce dla nowego gracza ---
+                "current_win_streak": 0,    # Aktualna seria zwycięstw
+                "max_win_streak": 0,        # Rekordowa seria gier bez porażki (high-score serii)
+                "won_words_history": [],    # Lista haseł, na których wygrano
                 "coins": 0,
                 "extra_lives": 0,
                 "hints": 0
             }
 
-        player = stats["players"][player_name]
+        player: dict = stats["players"][player_name]
 
-        # 1. Aktualizacja ogólnych liczników gier i znaków
+        # Aktualizacja ogólnych liczników gier i znaków
         player["games_played"] += 1
         player["total_letters"] += total_letters_typed
         player["correct_letters"] += correct_letters_typed
 
-        # 2. Logika serii zwycięstw (high-score gier bez porażki) i historii wygranych haseł
+        # Logika serii zwycięstw (high-score gier bez porażki) i historii wygranych haseł
         if result:  # Jeśli gracz WYGRAŁ
             player["current_win_streak"] += 1
-            
-            # --- NOWE: Dynamiczna nagroda w postaci monet zależnie od poziomu ---
+
             if level.lower() == "łatwy":
                 player["coins"] += 5
             elif level.lower() == "średni":
@@ -82,36 +79,27 @@ class StatsManager:
         else:  # Jeśli gracz PRZEGRAŁ
             player["current_win_streak"] = 0  # Seria zostaje przerwana
 
-        # Zapis zmodyfikowanego słownika do pliku json
+        # Zapis słownika do pliku JSON
         self._write_json(stats)
 
-    def get_player_stats(self, player_name: str) -> dict | None:
-        """Zwraca statystyki gracza wzbogacone o dynamicznie wyliczoną skuteczność."""
-        stats = self._read_json()
-        players = stats.get("players", {})
+    def get_player_stats(self, player_name: str) -> dict :
+        """ Zwraca statystyki gracza """
+        stats: dict = self._read_json()
+        players: dict = stats.get("players", {})
 
         if player_name not in players:
-            return None
+            return {}
 
-        player_data = players[player_name].copy()
+        player_data: dict = players[player_name].copy()
 
-        # Zabezpieczenie dla starych zapisów, które mogły nie mieć monet
-        if "coins" not in player_data:
-            player_data["coins"] = 0
-            player_data["extra_lives"] = 0
-            player_data["hints"] = 0
-
-        # Dynamiczne wyliczanie skuteczności procentowej
-        total = player_data["total_letters"]
-        correct = player_data["correct_letters"]
-
-        # Zabezpieczenie przed dzieleniem przez zero
-        player_data["accuracy_percentage"] = round((correct / total) * 100, 2) if total > 0 else 0.0
+        total: int = player_data["total_letters"]
+        correct: int = player_data["correct_letters"]
+        player_data["accuracy_percentage"] = round((correct / total) * 100, 2) if total > 0 else 0.0 # Dynamiczne wyliczanie skuteczności procentowej
 
         return player_data
 
     def reset_all_stats(self) -> None:
-        default_structure = {"players": {}}
+        default_structure: dict = {"players": {}}
         self._write_json(default_structure)
 
     def delete_player_stats(self, player_name: str) -> bool:
@@ -124,18 +112,16 @@ class StatsManager:
 
         return False
 
-    # --- NOWE: Funkcja obsługująca sklep ---
     def purchase_item(self, player_name: str, item_type: str, cost: int) -> bool:
         """Odejmuje monety i dodaje przedmiot, jeśli gracza stać. Zwraca True jeśli kupiono."""
         stats = self._read_json()
-        
-        # Sprawdzamy, czy gracz w ogóle istnieje
-        if player_name not in stats["players"]:
+
+        if player_name not in stats["players"]: # Spradzenie, czy gracz istnieje
             return False
             
         player = stats["players"][player_name]
         
-        # Sprawdzamy stan konta i czy przedmiot to faktycznie np. 'extra_lives' lub 'hints'
+        # Sprawdzenie stanu konta i czy przedmiot to faktycznie np. 'extra_lives' lub 'hints'
         if player.get("coins", 0) >= cost and item_type in player:
             player["coins"] -= cost
             player[item_type] += 1
@@ -146,14 +132,14 @@ class StatsManager:
 
     def consume_item(self, player_name: str, item_type: str) -> bool:
         """Zużywa przedmiot z ekwipunku, jeśli gracz go posiada."""
-        stats = self._read_json()
+        stats: dict = self._read_json()
         
         if player_name not in stats["players"]:
             return False
             
         player = stats["players"][player_name]
         
-        # Sprawdza czy gracz ma co najmniej 1 sztukę przedmiotu
+        # Sprawdzenie czy gracz ma co najmniej 1 sztukę przedmiotu
         if player.get(item_type, 0) > 0:
             player[item_type] -= 1
             self._write_json(stats)
